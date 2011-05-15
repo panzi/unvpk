@@ -37,8 +37,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	Vpk::ConsoleHandler handler(filter);
-	Vpk::Package package;
-	package.setHandler(&handler);
+	Vpk::Package package(&handler);
 
 	try {
 		if (archive == "-") {

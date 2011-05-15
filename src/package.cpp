@@ -181,6 +181,10 @@ bool Vpk::Package::extract(const std::string &destdir) const {
 			for (Vpk::Files::const_iterator i = files.begin(); i != files.end(); ++ i) {
 				const Vpk::File &file = *i;
 				fs::path filepath(dir / (file.name + "." + type));
+				
+				if (filter != ALL && m_handler && !m_handler->filterfile(filepath.string()))
+					continue;
+
 				fs::ofstream os;
 				os.exceptions(std::ios::failbit | std::ios::badbit);
 

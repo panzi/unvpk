@@ -12,8 +12,8 @@
 namespace Vpk {
 	class Package {
 	public:
-		Package() :
-			m_name(), m_srcdir("."), m_types(), m_handler(0) {}
+		Package(Handler *handler = 0) :
+			m_name(), m_srcdir("."), m_types(), m_handler(handler) {}
 
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
