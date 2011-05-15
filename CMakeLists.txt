@@ -13,8 +13,9 @@ add_executable(unvpk
 	src/io.cpp
 	src/package.cpp
 	src/type.cpp
-	src/filter_handler.cpp
 	src/console_handler.cpp
+	src/checking_data_handler.cpp
+	src/file_data_handler.cpp
 )
 
 target_link_libraries(unvpk

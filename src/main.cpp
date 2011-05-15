@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	Vpk::ConsoleHandler handler(filter);
+	Vpk::ConsoleHandler handler;
 	Vpk::Package package(&handler);
 
 	try {
@@ -48,6 +48,10 @@ int main(int argc, char *argv[]) {
 			package.read(archive);
 		}
 
+		if (!filter.empty()) {
+			package.filter(filter);
+		}
+
 		if (command == "l") {
 			package.list();
 		}
@@ -55,8 +59,7 @@ int main(int argc, char *argv[]) {
 			package.extract(".");
 		}
 		else if (command == "c") {
-			std::cerr << "CRC32 validation not implemented yet\n";
-			return 1;
+			package.check();
 		}
 	}
 	catch (const std::exception &exc) {
@@ -64,5 +67,5 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	return 0;
+	return handler.allok() ? 0 : 1;
 }

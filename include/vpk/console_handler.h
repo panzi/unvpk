@@ -4,15 +4,15 @@
 #include <boost/format.hpp>
 
 #include <vpk/package.h>
-#include <vpk/filter_handler.h>
+#include <vpk/handler.h>
 
 namespace Vpk {
-	class ConsoleHandler : public FilterHandler {
+	class ConsoleHandler : public Handler {
 	public:
-		typedef FilterHandler super_type;
+		typedef Handler super_type;
 
-		ConsoleHandler(const std::vector<std::string> filter, bool raise = false) :
-			FilterHandler(filter), m_extracting(false), m_raise(raise),
+		ConsoleHandler(bool raise = false) :
+			m_extracting(false), m_raise(raise),
 			m_filecount(0), m_success(0), m_fail(0) {}
 
 		void begin(const Package &package) { m_filecount = package.filecount(); }
@@ -24,6 +24,8 @@ namespace Vpk {
 		void extract(const std::string &filepath);
 		void success(const std::string &filepath);
 	
+		bool         ok()        const { return m_fail == 0; }
+		bool         allok()     const { return m_fail == 0 && m_success == m_filecount; }
 		bool         raise()     const { return m_raise; }
 		unsigned int success()   const { return m_success; }
 		unsigned int fail()      const { return m_fail; }

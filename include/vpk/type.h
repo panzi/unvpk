@@ -16,6 +16,7 @@ namespace Vpk {
 
 		const std::string  &name() const { return m_name; }
 		const Dirs         &dirs() const { return m_dirs; }
+		      Dirs         &dirs()       { return m_dirs; }
 
 	private:
 		std::string m_name;

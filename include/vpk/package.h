@@ -8,6 +8,7 @@
 
 #include <vpk/type.h>
 #include <vpk/handler.h>
+#include <vpk/data_handler_factory.h>
 
 namespace Vpk {
 	class Package {
@@ -23,13 +24,18 @@ namespace Vpk {
 		const std::string &name() const { return m_name; }
 		const std::string &srcdir() const { return m_srcdir; }
 		const Types &types() const { return m_types; }
+		      Types &types()       { return m_types; }
 		void setHandler(Handler *handler) { m_handler = handler; }
 		const Handler *handler() const { return m_handler; }
+
+		void filter(const std::vector<std::string> &paths);
 
 		void list(std::ostream &os = std::cout) const;
 		void list(const std::vector<std::string> &filter, std::ostream &os = std::cout) const;
 
-		bool extract(const std::string &destdir) const;
+		void extract(const std::string &destdir, bool check = false) const;
+		void check() const;
+		void process(DataHandlerFactory &factory) const;
 
 		size_t filecount() const;
 
