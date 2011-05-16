@@ -19,7 +19,11 @@ void Vpk::ConsoleHandler::end() {
 }
 
 bool Vpk::ConsoleHandler::direrror(const std::exception &exc, const std::string &path) {
-	if (m_extracting) std::cout << std::endl;
+	if (m_extracting) {
+		++ m_fail;
+		m_extracting = false;
+		std::cout << std::endl;
+	}
 
 	if (!m_raise) {
 		println(boost::format("*** error creating directory \"%s\": %s") % path % exc.what());
@@ -28,8 +32,11 @@ bool Vpk::ConsoleHandler::direrror(const std::exception &exc, const std::string 
 }
 
 bool Vpk::ConsoleHandler::fileerror(const std::exception &exc, const std::string &path) {
-	m_extracting = false;
-	++ m_fail;
+	if (m_extracting) {
+		++ m_fail;
+		m_extracting = false;
+	}
+
 	if (m_raise) {
 		std::cout << std::endl;
 	}
@@ -40,7 +47,11 @@ bool Vpk::ConsoleHandler::fileerror(const std::exception &exc, const std::string
 }
 
 bool Vpk::ConsoleHandler::archiveerror(const std::exception &exc, const std::string &path) {
-	if (m_extracting) std::cout << std::endl;
+	if (m_extracting) {
+		++ m_fail;
+		m_extracting = false;
+		std::cout << std::endl;
+	}
 
 	if (!m_raise) {
 		println(boost::format("*** error reading archive \"%s\": %s") % path % exc.what());
@@ -49,7 +60,11 @@ bool Vpk::ConsoleHandler::archiveerror(const std::exception &exc, const std::str
 }
 
 bool Vpk::ConsoleHandler::filtererror(const std::exception &exc, const std::string &path) {
-	if (m_extracting) std::cout << std::endl;
+	if (m_extracting) {
+		++ m_fail;
+		m_extracting = false;
+		std::cout << std::endl;
+	}
 
 	if (!m_raise) {
 		std::cout << "*** error reading entry \"" << path << "\": " << exc.what() << std::endl;
@@ -58,12 +73,7 @@ bool Vpk::ConsoleHandler::filtererror(const std::exception &exc, const std::stri
 }
 
 void Vpk::ConsoleHandler::extract(const std::string &filepath) {
-	if (m_extracting) {
-		std::cout << std::endl;
-	}
-	else {
-		m_extracting = true;
-	}
+	m_extracting = true;
 	print(filepath);
 }
 
