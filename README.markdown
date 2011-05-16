@@ -7,6 +7,7 @@ Usage
 -----
 	unvpk COMMAND [OPTION...] ARCHIVE [FILE...]
 	
+	ARCHIVE has to be a file named "*_dir.vpk".
 	If one or more FILEs are given only these are listed/checked/extracted.
 	
 	Commands:

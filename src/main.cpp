@@ -33,6 +33,7 @@ void usage(const po::options_description &desc) {
 	std::cout <<
 		"Usage: unvpk COMMAND [OPTION...] ARCHIVE [FILE...]\n"
 		"List, check and extract VPK archives.\n"
+		"ARCHIVE has to be a file named \"*_dir.vpk\".\n"
 		"If one or more FILEs are given only these are listed/checked/extracted.\n"
 		"\n"
 		"Commands:\n"
