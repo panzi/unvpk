@@ -3,6 +3,23 @@ UNVPK
 Unvpk is a small command line tool for listing, checking and extracting of VPK
 archives. Such archives are used in Steam engine based games like Portal 2.
 
+Usage
+-----
+	unvpk COMMAND [OPTION...] ARCHIVE [FILE...]
+	
+	If one or more FILEs are given only these are listed/checked/extracted.
+	
+	Commands:
+	    l                   list archive contents
+	    x                   extract archive
+	    c                   check archive
+	
+	Options:
+	  --help                print help message
+	  --version             print version information
+	  --check               check CRC32 sums during extraction
+	  --stop                stop on error
+
 Notes
 -----
 This program is written by Mathias Panzenböck and released under the LGPL v2.1.
