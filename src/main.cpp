@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
 
 	if (vm.count("help") || vm.count("command") < 1) {
 		usage(desc);
+		return 0;
 	}
 	else if (vm.count("version")) {
 		std::cout << "unvpk version " << Vpk::VERSION << std::endl;
