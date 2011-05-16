@@ -20,12 +20,20 @@ Usage
 	  --check               check CRC32 sums during extraction
 	  --stop                stop on error
 
+Dependencies
+------------
+This program uses following components of the [boost][1] C++ library:
+
+ * `system`
+ * `filesystem`
+ * `program_options`
+
 Notes
 -----
 This program is written by Mathias Panzenböck and released under the LGPL v2.1.
-However, I looked at the source of Gibbeds VPK Extractor in order to find out
-how VPK works.
+However, I looked at the source of [Gibbeds VPK Extractor][2] ([SVN][3]) in
+order to find out how VPK works.
 
-See:
-http://blog.gib.me/2009/07/07/left4dead-vpk-extraction-tools-updated/
-http://svn.gib.me/public/valve/trunk/
+[1]: http://www.boost.org/
+[2]: http://blog.gib.me/2009/07/07/left4dead-vpk-extraction-tools-updated/
+[3]: http://svn.gib.me/public/valve/trunk/
