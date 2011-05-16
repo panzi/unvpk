@@ -1,7 +1,7 @@
 UNVPK
 =====
 Unvpk is a small command line tool for listing, checking and extracting of VPK
-archives. Such archives are used in Steam engine based games like Portal 2.
+archives. Such archives are used in Source engine based games like Portal 2.
 
 Usage
 -----
