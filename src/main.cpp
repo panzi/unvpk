@@ -13,14 +13,18 @@ namespace po = boost::program_options;
 
 void usage(const po::options_description &desc) {
 	std::cout <<
-		"Usage: unvpk COMMAND [OPTIONS] ARCHIVE [FILES]\n"
+		"Usage: unvpk COMMAND [OPTION...] ARCHIVE [FILE...]\n"
+		"List, check and extract VPK archives.\n"
+		"If one or more FILEs are given only these are listed/checked/extracted.\n"
 		"\n"
 		"Commands:\n"
 		"    l                   list archive contents\n"
 		"    x                   extract archive\n"
 		"    c                   check archive\n"
+		"\n" <<
+		desc <<
 		"\n"
-		<< desc;
+		"(c) 2011 Mathias Panzenböck\n";
 }
 
 int main(int argc, char *argv[]) {
