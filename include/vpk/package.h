@@ -55,24 +55,19 @@ namespace Vpk {
 		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
 
 		void read(std::istream &is);
+		void filter(Nodes &nodes, const std::set<Node*> &keep);
 		void process(const Nodes &nodes, const std::vector<std::string> &prefix, Archives &archives, DataHandlerFactory &factory) const;
-
-		bool direrror(const std::exception &exc, const boost::filesystem::path &path)     const { return direrror(exc, path.string()); }
-		bool fileerror(const std::exception &exc, const boost::filesystem::path &path)    const { return fileerror(exc, path.string()); }
-		bool archiveerror(const std::exception &exc, const boost::filesystem::path &path) const { return archiveerror(exc, path.string()); }
 
 		bool direrror(const std::exception &exc, const std::string &path)     const { return error(exc, path, &Handler::direrror); }
 		bool fileerror(const std::exception &exc, const std::string &path)    const { return error(exc, path, &Handler::fileerror); }
 		bool archiveerror(const std::exception &exc, const std::string &path) const { return error(exc, path, &Handler::archiveerror); }
+		bool filtererror(const std::exception &exc, const std::string &path)  const { return error(exc, path, &Handler::filtererror); }
 
 		bool direrror(const std::string &msg, const std::string &path)     const { return error(msg, path, &Handler::direrror); }
 		bool fileerror(const std::string &msg, const std::string &path)    const { return error(msg, path, &Handler::fileerror); }
 		bool archiveerror(const std::string &msg, const std::string &path) const { return error(msg, path, &Handler::archiveerror); }
-		
-		bool direrror(const std::string &msg, const boost::filesystem::path &path)     const { return direrror(msg, path.string()); }
-		bool fileerror(const std::string &msg, const boost::filesystem::path &path)    const { return fileerror(msg, path.string()); }
-		bool archiveerror(const std::string &msg, const boost::filesystem::path &path) const { return archiveerror(msg, path.string()); }
-
+		bool filtererror(const std::string &msg, const std::string &path)  const { return error(msg, path, &Handler::filtererror); }
+	
 		bool error(const std::string &msg, const std::string &path, ErrorMethod handler) const;
 		bool error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
 

@@ -12,15 +12,16 @@ namespace Vpk {
 		typedef Handler super_type;
 
 		ConsoleHandler(bool raise = false) :
-			m_extracting(false), m_raise(raise),
+			m_begun(false), m_extracting(false), m_raise(raise),
 			m_filecount(0), m_success(0), m_fail(0) {}
 
-		void begin(const Package &package) { m_filecount = package.filecount(); }
+		void begin(const Package &package);
 		void end();
 		
 		bool direrror(const std::exception &exc, const std::string &path);
 		bool fileerror(const std::exception &exc, const std::string &path);
 		bool archiveerror(const std::exception &exc, const std::string &path);
+		bool filtererror(const std::exception &exc, const std::string &path);
 		void extract(const std::string &filepath);
 		void success(const std::string &filepath);
 	
@@ -38,6 +39,7 @@ namespace Vpk {
 		void println(const boost::format &msg) { println(msg.str()); }
 
 	private:
+		bool         m_begun;
 		bool         m_extracting;
 		bool         m_raise;
 		unsigned int m_filecount;

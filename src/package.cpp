@@ -36,16 +36,15 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 	std::string filename(path.filename());
 		
 	if (filename.size() < 8 || tolower(filename.substr(filename.size()-8)) != "_dir.vpk") {
-		std::string msg = "file does not end in \"_dir.vpk\": \"";
-		msg += path.string();
-		msg += "\"";
-
+		Exception exc((boost::format("file does not end in \"_dir.vpk\": \"%s\"") % path.string()).str());
 		if (m_handler) {
-			m_handler->archiveerror(Exception(msg), path.string());
+			if (m_handler->archiveerror(exc, path.string())) {
+				throw exc;
+			}
 			m_name = filename;
 		}
 		else {
-			throw Exception(msg);
+			throw exc;
 		}
 	}
 	else {
@@ -204,14 +203,14 @@ void Vpk::Package::list(std::ostream &os) const {
 	::list(m_nodes, std::vector<std::string>(), os);
 }
 
-static void filter(Vpk::Nodes &nodes, const std::set<Vpk::Node*> &keep) {
+void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {
 	std::vector<std::string> erase;
-	for (Vpk::Nodes::iterator it = nodes.begin(); it != nodes.end(); ++ it) {
-		Vpk::Node *node = it->second.get();
+	for (Nodes::iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		Node *node = it->second.get();
 		bool kept = keep.find(node) != keep.end();
-		if (node->type() == Vpk::Node::DIR) {
+		if (node->type() == Node::DIR) {
 			if (!kept) {
-				Vpk::Dir *dir = (Vpk::Dir*) node;
+				Dir *dir = (Dir*) node;
 				filter(dir->nodes(), keep);
 				if (dir->nodes().empty()) {
 					erase.push_back(node->name());
@@ -237,11 +236,15 @@ std::set<std::string> Vpk::Package::filter(const std::vector<std::string> &paths
 			keep.insert(node);
 		}
 		else {
+			Exception exc("no such file or directory");
+			if (filtererror(exc, *i)) {
+				throw exc;
+			}
 			notfound.insert(*i);
 		}
 	}
 
-	::filter(m_nodes, keep);
+	filter(m_nodes, keep);
 
 	return notfound;
 }
@@ -319,7 +322,10 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 				else {
 					if (!fs::exists(archivePath)) {
-						archiveerror("archive does not exist", archivePath);
+						Exception exc("archive does not exist");
+						if (archiveerror(exc, archivePath.string())) {
+							throw exc;
+						}
 
 						archives[archiveName] = boost::shared_ptr<fs::ifstream>();
 						continue;
@@ -340,7 +346,7 @@ void Vpk::Package::process(const Nodes &nodes,
 						archive->read(data, count);
 					}
 					catch (const std::exception& exc) {
-						if (archiveerror(exc, archivePath)) throw;
+						if (archiveerror(exc, archivePath.string())) throw;
 						fail = true;
 						break;
 					}
