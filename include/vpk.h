@@ -1,6 +1,13 @@
 #ifndef VPK_H
 #define VPK_H
 
+#include <string>
+
+namespace Vpk {
+	extern std::string VERSION;
+}
+
+#include <vpk/version.h>
 #include <vpk/package.h>
 #include <vpk/node.h>
 #include <vpk/dir.h>

@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 2.0)
 
 project(unvpk)
 
-find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
 
 include_directories("include")
 
 add_executable(unvpk
 	src/main.cpp
+	src/version.cpp
 	src/dir.cpp
 	src/file.cpp
 	src/io.cpp
@@ -24,4 +25,5 @@ install(TARGETS unvpk
 target_link_libraries(unvpk
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
+  ${Boost_PROGRAM_OPTIONS_LIBRARY}
 )

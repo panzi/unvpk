@@ -52,29 +52,29 @@ namespace Vpk {
 
 	private:
 		typedef std::map<std::string, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
-		typedef void (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
+		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
 
 		void read(std::istream &is);
 		void process(const Nodes &nodes, const std::vector<std::string> &prefix, Archives &archives, DataHandlerFactory &factory) const;
 
-		void direrror(const std::exception &exc, const boost::filesystem::path &path)     const { direrror(exc, path.string()); }
-		void fileerror(const std::exception &exc, const boost::filesystem::path &path)    const { fileerror(exc, path.string()); }
-		void archiveerror(const std::exception &exc, const boost::filesystem::path &path) const { archiveerror(exc, path.string()); }
+		bool direrror(const std::exception &exc, const boost::filesystem::path &path)     const { return direrror(exc, path.string()); }
+		bool fileerror(const std::exception &exc, const boost::filesystem::path &path)    const { return fileerror(exc, path.string()); }
+		bool archiveerror(const std::exception &exc, const boost::filesystem::path &path) const { return archiveerror(exc, path.string()); }
 
-		void direrror(const std::exception &exc, const std::string &path)     const { error(exc, path, &Handler::direrror); }
-		void fileerror(const std::exception &exc, const std::string &path)    const { error(exc, path, &Handler::fileerror); }
-		void archiveerror(const std::exception &exc, const std::string &path) const { error(exc, path, &Handler::archiveerror); }
+		bool direrror(const std::exception &exc, const std::string &path)     const { return error(exc, path, &Handler::direrror); }
+		bool fileerror(const std::exception &exc, const std::string &path)    const { return error(exc, path, &Handler::fileerror); }
+		bool archiveerror(const std::exception &exc, const std::string &path) const { return error(exc, path, &Handler::archiveerror); }
 
-		void direrror(const std::string &msg, const std::string &path)     const { error(msg, path, &Handler::direrror); }
-		void fileerror(const std::string &msg, const std::string &path)    const { error(msg, path, &Handler::fileerror); }
-		void archiveerror(const std::string &msg, const std::string &path) const { error(msg, path, &Handler::archiveerror); }
+		bool direrror(const std::string &msg, const std::string &path)     const { return error(msg, path, &Handler::direrror); }
+		bool fileerror(const std::string &msg, const std::string &path)    const { return error(msg, path, &Handler::fileerror); }
+		bool archiveerror(const std::string &msg, const std::string &path) const { return error(msg, path, &Handler::archiveerror); }
 		
-		void direrror(const std::string &msg, const boost::filesystem::path &path)     const { direrror(msg, path.string()); }
-		void fileerror(const std::string &msg, const boost::filesystem::path &path)    const { fileerror(msg, path.string()); }
-		void archiveerror(const std::string &msg, const boost::filesystem::path &path) const { archiveerror(msg, path.string()); }
+		bool direrror(const std::string &msg, const boost::filesystem::path &path)     const { return direrror(msg, path.string()); }
+		bool fileerror(const std::string &msg, const boost::filesystem::path &path)    const { return fileerror(msg, path.string()); }
+		bool archiveerror(const std::string &msg, const boost::filesystem::path &path) const { return archiveerror(msg, path.string()); }
 
-		void error(const std::string &msg, const std::string &path, ErrorMethod handler) const;
-		void error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
+		bool error(const std::string &msg, const std::string &path, ErrorMethod handler) const;
+		bool error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
 
 		std::string m_name;
 		std::string m_srcdir;

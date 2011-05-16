@@ -246,16 +246,16 @@ std::set<std::string> Vpk::Package::filter(const std::vector<std::string> &paths
 	return notfound;
 }
 
-void Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {
-	error(Exception(msg + ": \"" + path + "\""), path, handler);
+bool Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {
+	return error(Exception(msg + ": \"" + path + "\""), path, handler);
 }
 
-void Vpk::Package::error(const std::exception &exc, const std::string &path, ErrorMethod handler) const {
+bool Vpk::Package::error(const std::exception &exc, const std::string &path, ErrorMethod handler) const {
 	if (m_handler) {
-		(m_handler->*handler)(exc, path);
+		return (m_handler->*handler)(exc, path);
 	}
 	else {
-		throw exc;
+		return true;
 	}
 }
 
@@ -291,8 +291,7 @@ void Vpk::Package::process(const Nodes &nodes,
 				dataHandler.reset(factory.create(path, file->crc32));
 			}
 			catch (const std::exception &exc) {
-				std::cerr << "\ncreate: " << path << std::endl;
-				fileerror(exc, path);
+				if (fileerror(exc, path)) throw;
 				continue;
 			}
 	
@@ -302,8 +301,7 @@ void Vpk::Package::process(const Nodes &nodes,
 					dataHandler->finish();
 				}
 				catch (const std::exception &exc) {
-					std::cerr << "\nprocess+finish: " << path << std::endl;
-					fileerror(exc, path);
+					if (fileerror(exc, path)) throw;
 					continue;
 				}
 			}
@@ -342,8 +340,7 @@ void Vpk::Package::process(const Nodes &nodes,
 						archive->read(data, count);
 					}
 					catch (const std::exception& exc) {
-						std::cerr << "\nreading: " << archivePath << std::endl;
-						archiveerror(exc, archivePath);
+						if (archiveerror(exc, archivePath)) throw;
 						fail = true;
 						break;
 					}
@@ -352,8 +349,7 @@ void Vpk::Package::process(const Nodes &nodes,
 						dataHandler->process(data, count);
 					}
 					catch (const std::exception& exc) {
-						std::cerr << "\nprocess: " << path << std::endl;
-						fileerror(exc, path);
+						if (fileerror(exc, path)) throw;
 						fail = true;
 						break;
 					}
@@ -367,7 +363,7 @@ void Vpk::Package::process(const Nodes &nodes,
 					dataHandler->finish();
 				}
 				catch (const std::exception& exc) {
-					fileerror(exc, path);
+					if (fileerror(exc, path)) throw;
 					continue;
 				}
 					
@@ -380,8 +376,7 @@ void Vpk::Package::process(const Nodes &nodes,
 						dataHandler->finish();
 					}
 					catch (const std::exception& exc) {
-						std::cerr << "\ncreate+process+finish additional small: " << path << std::endl;
-						fileerror(exc, smallpath);
+						if (fileerror(exc, smallpath)) throw;
 						continue;
 					}
 				}

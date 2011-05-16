@@ -4,42 +4,80 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/program_options.hpp>
 
 #include <vpk.h>
 
 namespace fs = boost::filesystem;
+namespace po = boost::program_options;
 
-void usage() {
+void usage(const po::options_description &desc) {
 	std::cout <<
-		"Usage: unvpk COMMAND ARCHIVE [FILES]\n"
-		"TODO: Description.\n";
+		"Usage: unvpk COMMAND [OPTIONS] ARCHIVE [FILES]\n"
+		"\n"
+		"Commands:\n"
+		"    l                   list archive contents\n"
+		"    x                   extract archive\n"
+		"    c                   check archive\n"
+		"\n"
+		<< desc;
 }
 
 int main(int argc, char *argv[]) {
-	if (argc < 2)  {
-		usage();
+	po::options_description desc("Options");
+	desc.add_options()
+		("help",    "print help message")
+		("version", "print version information")
+		("check",   "check CRC32 sums during extraction")
+		("stop",    "stop on error");
+
+	po::options_description hidden;
+	hidden.add_options()
+		("command", po::value<std::string>(), "unvpk command")
+		("archive", po::value<std::string>(), "vpk archive")
+		("filter",  po::value< std::vector<std::string> >(), "files to process");
+
+	po::options_description opts;
+	opts.add(desc).add(hidden);
+
+	po::positional_options_description pos;
+	pos.add("command", 1);
+	pos.add("archive", 1);
+	pos.add("filter", -1);
+
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).options(opts).positional(pos).run(), vm);
+	po::notify(vm);    
+
+	if (vm.count("help") || vm.count("command") < 1) {
+		usage(desc);
+	}
+	else if (vm.count("version")) {
+		std::cout << "unvpk version " << Vpk::VERSION << std::endl;
 		return 0;
 	}
 
-	std::string command = argv[1];
-	std::string archive = "-";
-	std::vector<std::string> filter;
+	bool stop = vm.count("stop") > 0;
+	bool check = vm.count("check") > 0;
 
-	if (argc > 2) {
-		archive = argv[2];
-		std::copy(argv+3, argv+argc, std::back_inserter(filter));
+	std::string command = vm["command"].as<std::string>();
+	std::string archive = vm.count("archive") > 0 ? vm["archive"].as<std::string>() : std::string("-");
+	std::vector<std::string> filter;
+	
+	if (vm.count("filter") > 0) {
+		filter = vm["filter"].as< std::vector<std::string> >();
 	}
 
 	if (command != "l" && command != "x" && command != "c") {
-		std::cerr << "unkonwn command: " << command << std::endl;
-		usage();
+		std::cerr << "*** error: unkonwn command: " << command << std::endl;
+		usage(desc);
 		return 1;
 	}
 
-	Vpk::ConsoleHandler handler(true);
+	Vpk::ConsoleHandler handler(stop);
 	Vpk::Package package(&handler);
 
-//	try {
+	try {
 		if (archive == "-") {
 			std::cin.exceptions(std::ios::failbit | std::ios::badbit);
 			package.read(".", "", std::cin);
@@ -56,16 +94,16 @@ int main(int argc, char *argv[]) {
 			package.list();
 		}
 		else if (command == "x") {
-			package.extract(".");
+			package.extract(".", check);
 		}
 		else if (command == "c") {
 			package.check();
 		}
-//	}
-//	catch (const std::exception &exc) {
-//		std::cerr << "*** error: " << exc.what() << std::endl;
-//		return 1;
-//	}
+	}
+	catch (const std::exception &exc) {
+		std::cerr << "*** error: " << exc.what() << std::endl;
+		return 1;
+	}
 
 	return handler.allok() ? 0 : 1;
 }

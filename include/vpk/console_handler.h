@@ -18,9 +18,9 @@ namespace Vpk {
 		void begin(const Package &package) { m_filecount = package.filecount(); }
 		void end();
 		
-		void direrror(const std::exception &exc, const std::string &path);
-		void fileerror(const std::exception &exc, const std::string &path);
-		void archiveerror(const std::exception &exc, const std::string &path);
+		bool direrror(const std::exception &exc, const std::string &path);
+		bool fileerror(const std::exception &exc, const std::string &path);
+		bool archiveerror(const std::exception &exc, const std::string &path);
 		void extract(const std::string &filepath);
 		void success(const std::string &filepath);
 	
