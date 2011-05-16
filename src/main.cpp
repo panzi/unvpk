@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (command != "l" && command != "x" && command != "c") {
-		std::cerr << "*** error: unkonwn command: " << command << std::endl;
+		std::cerr << "*** error: unknown command: " << command << std::endl;
 		usage(desc);
 		return 1;
 	}
