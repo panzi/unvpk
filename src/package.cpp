@@ -227,8 +227,7 @@ void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {
 	}
 }
 
-std::set<std::string> Vpk::Package::filter(const std::vector<std::string> &paths) {
-	std::set<std::string> notfound;
+void Vpk::Package::filter(const std::vector<std::string> &paths) {
 	std::set<Node*> keep;
 	for (std::vector<std::string>::const_iterator i = paths.begin(); i != paths.end(); ++ i) {
 		Node *node = get(*i);
@@ -240,13 +239,10 @@ std::set<std::string> Vpk::Package::filter(const std::vector<std::string> &paths
 			if (filtererror(exc, *i)) {
 				throw exc;
 			}
-			notfound.insert(*i);
 		}
 	}
 
 	filter(m_nodes, keep);
-
-	return notfound;
 }
 
 bool Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {

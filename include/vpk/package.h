@@ -38,8 +38,7 @@ namespace Vpk {
 		void setHandler(Handler *handler) { m_handler = handler; }
 		const Handler *handler() const { return m_handler; }
 
-		// returns not found paths
-		std::set<std::string> filter(const std::vector<std::string> &paths);
+		void filter(const std::vector<std::string> &paths);
 
 		void list(std::ostream &os = std::cout) const;
 		void list(const std::vector<std::string> &filter, std::ostream &os = std::cout) const;
