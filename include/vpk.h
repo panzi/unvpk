@@ -2,7 +2,7 @@
 #define VPK_H
 
 #include <vpk/package.h>
-#include <vpk/type.h>
+#include <vpk/node.h>
 #include <vpk/dir.h>
 #include <vpk/file.h>
 #include <vpk/handler.h>

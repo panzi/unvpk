@@ -1,14 +1,18 @@
 #include <vpk/io.h>
 #include <vpk/dir.h>
+#include <vpk/file.h>
 
-void Vpk::Dir::read(std::istream &is) {
+void Vpk::Dir::read(std::istream &is, const std::string &type) {
 	// files
 	while (is.good()) {
 		std::string name;
 		readAsciiZ(is, name);
 		if (name.empty()) break;
 
-		m_files.push_back(name);
-		m_files.back().read(is);
+		name += ".";
+		name += type;
+		File *file = new File(name);
+		m_nodes[name] = NodePtr(file);
+		file->read(is);
 	}
 }

@@ -5,17 +5,21 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include <vpk/io.h>
+#include <vpk/dir.h>
+#include <vpk/file.h>
 #include <vpk/package.h>
 #include <vpk/file_format_error.h>
 #include <vpk/console_handler.h>
 #include <vpk/file_data_handler_factory.h>
 #include <vpk/checking_data_handler_factory.h>
 
-namespace fs = boost::filesystem;
+namespace fs   = boost::filesystem;
+namespace algo = boost::algorithm;
 
 static std::string tolower(const std::string &s) {
 	std::string s2(s);
@@ -76,98 +80,170 @@ void Vpk::Package::read(std::istream &is) {
 
 	// types
 	while (is.good()) {
-		std::string name;
-		readAsciiZ(is, name);
-		if (name.empty()) break;
+		std::string type;
+		readAsciiZ(is, type);
+		if (type.empty()) break;
+		
+		// dirs
+		while (is.good()) {
+			std::string path;
+			readAsciiZ(is, path);
+			if (path.empty()) break;
 
-		m_types.push_back(name);
-		m_types.back().read(is);
+			mkpath(path).read(is, type);
+		}
 	}
 }
 
-size_t Vpk::Package::filecount() const {
-	size_t n = 0;
+Vpk::Dir &Vpk::Package::mkpath(const std::string &path) {
+	std::vector<std::string> pathvec;
+	algo::split(pathvec, path, algo::is_any_of("/"));
+	return mkpath(pathvec);
+}
+
+Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
+	if (path.empty()) {
+		throw Exception("empty path");
+	}
 	
-	for (Vpk::Types::const_iterator it = m_types.begin(); it != m_types.end(); ++ it) {
-		const std::string &type = it->name();
-		const Vpk::Dirs &dirs = it->dirs();
-		for (Vpk::Dirs::const_iterator id = dirs.begin(); id != dirs.end(); ++ id) {
-			n += id->files().size();
+	Dir *dir = 0;
+	Nodes *nodes = &m_nodes;
+	for (std::vector<std::string>::const_iterator ip = path.begin(); ip != path.end(); ++ ip) {
+		const std::string &name = *ip;
+		Nodes::iterator in = nodes->find(name);
+
+		if (in == nodes->end()) {
+			dir = new Dir(name);
+			(*nodes)[name] = NodePtr(dir);
+		}
+		else {
+			Node *node = in->second.get();
+
+			if (node->type() != Node::DIR) {
+				std::vector<std::string> prefix;
+				std::copy(path.begin(), ip+1, std::back_inserter(prefix));
+				throw Exception(std::string("path is not a directory: ") + algo::join(prefix, "/"));
+			}
+		
+			dir = (Dir*) node;
+		}
+
+		nodes = &dir->nodes();
+	}
+
+	return *dir;
+}
+
+Vpk::Node *Vpk::Package::get(const std::string &path) {
+	std::vector<std::string> pathvec;
+	algo::split(pathvec, path, algo::is_any_of("/"));
+
+	if (pathvec.empty()) {
+		return 0;
+	}
+
+	Node  *node  = 0;
+	Nodes *nodes = &m_nodes;
+	std::vector<std::string>::const_iterator ip = pathvec.begin();
+	while (ip != pathvec.end()) {
+		const std::string &name = *ip;
+		Nodes::iterator in = nodes->find(name);
+
+		if (in == nodes->end()) {
+			return 0;
+		}
+
+		node = in->second.get();
+		++ ip;
+
+		if (ip != pathvec.end()) {
+			if (node->type() != Node::DIR) {
+				return 0;
+			}
+			nodes = &((Dir*) node)->nodes();
+		}
+	}
+
+	return node;
+}
+
+static size_t filecount(const Vpk::Nodes &nodes) {
+	size_t n = 0;
+	for (Vpk::Nodes::const_iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		Vpk::Node *node = it->second.get();
+		if (node->type() == Vpk::Node::DIR) {
+			n += filecount(((const Vpk::Dir*) node)->nodes());
+		}
+		else {
+			++ n;
 		}
 	}
 
 	return n;
 }
 
-void Vpk::Package::list(std::ostream &os) const {
-	for (Vpk::Types::const_iterator it = m_types.begin(); it != m_types.end(); ++ it) {
-		const std::string &type = it->name();
-		const Vpk::Dirs &dirs = it->dirs();
-		for (Vpk::Dirs::const_iterator id = dirs.begin(); id != dirs.end(); ++ id) {
-			std::string dir = id->name() + "/";
+size_t Vpk::Package::filecount() const {
+	return ::filecount(m_nodes);
+}
 
-			const Vpk::Files &files = id->files();
-			for (Vpk::Files::const_iterator i = files.begin(); i != files.end(); ++ i) {
-				os << dir << i->name << "." << type << std::endl;
-			}
+static void list(const Vpk::Nodes &nodes, const std::vector<std::string> &prefix, std::ostream &os) {
+	for (Vpk::Nodes::const_iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		Vpk::Node *node = it->second.get();
+		std::vector<std::string> path(prefix);
+		path.push_back(node->name());
+		if (node->type() == Vpk::Node::DIR) {
+			list(((const Vpk::Dir*) node)->nodes(), path, os);
+		}
+		else {
+			os << algo::join(path, "/") << std::endl;
 		}
 	}
 }
 
-void Vpk::Package::filter(const std::vector<std::string> &paths) {
-	std::set<std::string> filefilter;
-	std::set<std::string> dirfilter;
+void Vpk::Package::list(std::ostream &os) const {
+	::list(m_nodes, std::vector<std::string>(), os);
+}
 
-	for (std::vector<std::string>::const_iterator i = paths.begin(); i != paths.end(); ++ i) {
-		const std::string &name = *i;
-		if (!name.empty() && name[i->size()-1] == '/') {
-			dirfilter.insert(name);
-		}
-		else {
-			filefilter.insert(name);
-			dirfilter.insert(fs::path(name).parent_path().string() + "/");
-			dirfilter.insert(name + "/");
-		}
-	}
-
-	for (Vpk::Types::iterator it = m_types.begin(); it != m_types.end();) {
-		const std::string &type = it->name();
-		Vpk::Dirs &dirs = it->dirs();
-		for (Vpk::Dirs::iterator id = dirs.begin(); id != dirs.end();) {
-			std::string dir = id->name();
-			dir += "/";
-
-			Vpk::Files &files = id->files();
-			if (dirfilter.find(dir) == dirfilter.end()) {
-				for (Vpk::Files::iterator i = files.begin(); i != files.end();) {
-					std::string filename = dir;
-					filename += i->name;
-					filename += ".";
-					filename += type;
-					if (filefilter.find(filename) == filefilter.end()) {
-						i = files.erase(i);
-					}
-					else {
-						++ i;
-					}
+static void filter(Vpk::Nodes &nodes, const std::set<Vpk::Node*> &keep) {
+	std::vector<std::string> erase;
+	for (Vpk::Nodes::iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		Vpk::Node *node = it->second.get();
+		bool kept = keep.find(node) != keep.end();
+		if (node->type() == Vpk::Node::DIR) {
+			if (!kept) {
+				Vpk::Dir *dir = (Vpk::Dir*) node;
+				filter(dir->nodes(), keep);
+				if (dir->nodes().empty()) {
+					erase.push_back(node->name());
 				}
 			}
-
-			if (files.empty()) {
-				id = dirs.erase(id);
-			}
-			else {
-				++ id;
-			}
 		}
-
-		if (dirs.empty()) {
-			it = m_types.erase(it);
-		}
-		else {
-			++ it;
+		else if (!kept) {
+			erase.push_back(node->name());
 		}
 	}
+
+	for (std::vector<std::string>::const_iterator it = erase.begin(); it != erase.end(); ++ it) {
+		nodes.erase(*it);
+	}
+}
+
+std::set<std::string> Vpk::Package::filter(const std::vector<std::string> &paths) {
+	std::set<std::string> notfound;
+	std::set<Node*> keep;
+	for (std::vector<std::string>::const_iterator i = paths.begin(); i != paths.end(); ++ i) {
+		Node *node = get(*i);
+		if (node) {
+			keep.insert(node);
+		}
+		else {
+			notfound.insert(*i);
+		}
+	}
+
+	::filter(m_nodes, keep);
+
+	return notfound;
 }
 
 void Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {
@@ -193,123 +269,135 @@ void Vpk::Package::check() const {
 	process(factory);
 }
 
-void Vpk::Package::process(DataHandlerFactory &factory) const {
-	std::map<std::string, boost::shared_ptr<fs::ifstream> > archives;
+void Vpk::Package::process(const Nodes &nodes,
+                           const std::vector<std::string> &prefix,
+                           Archives &archives,
+                           DataHandlerFactory &factory) const {
+	for (Nodes::const_iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		const Node *node = it->second.get();
+		std::vector<std::string> pathvec(prefix);
+		pathvec.push_back(node->name());
+		if (node->type() == Node::DIR) {
+			process(((const Dir*) node)->nodes(), pathvec, archives, factory);
+		}
+		else {
+			const File *file = (const File*) node;
+			std::string path = algo::join(pathvec, "/");
 
-	if (m_handler) m_handler->begin(*this);
-
-	for (Vpk::Types::const_iterator it = m_types.begin(); it != m_types.end(); ++ it) {
-		const std::string &type = it->name();
-		const Vpk::Dirs &dirs = it->dirs();
-		for (Vpk::Dirs::const_iterator id = dirs.begin(); id != dirs.end(); ++ id) {
-			fs::path dir(id->name());
-			const Vpk::Files &files = id->files();
-			for (Vpk::Files::const_iterator i = files.begin(); i != files.end(); ++ i) {
-				const Vpk::File &file = *i;
-				fs::path filepath(dir / (file.name + "." + type));
+			if (m_handler) m_handler->extract(path);
+			boost::scoped_ptr<DataHandler> dataHandler;
 				
-				if (m_handler) m_handler->extract(filepath.string());
-				boost::scoped_ptr<DataHandler> handler;
-				
+			try {
+				dataHandler.reset(factory.create(path, file->crc32));
+			}
+			catch (const std::exception &exc) {
+				std::cerr << "\ncreate: " << path << std::endl;
+				fileerror(exc, path);
+				continue;
+			}
+	
+			if (file->size == 0) {
 				try {
-					handler.reset(factory.create(filepath, file.crc32));
+					dataHandler->process((char*) &file->data[0], file->data.size());
+					dataHandler->finish();
 				}
 				catch (const std::exception &exc) {
-					fileerror(exc, filepath);
+					std::cerr << "\nprocess+finish: " << path << std::endl;
+					fileerror(exc, path);
 					continue;
 				}
-	
-				if (file.size == 0) {
-					try {
-						handler->process((char*) &file.data[0], file.data.size());
-						handler->finish();
-					}
-					catch (const std::exception &exc) {
-						fileerror(exc, filepath);
+			}
+			else {
+				std::string archiveName = (boost::format("%s_%03d.vpk") % m_name % file->index).str();
+				fs::path archivePath(m_srcdir);
+				archivePath /= archiveName;
+				boost::shared_ptr<fs::ifstream> archive;
+						
+				if (archives.find(archiveName) != archives.end()) {
+					archive = archives[archiveName];
+					if (!archive) {
 						continue;
 					}
 				}
 				else {
-					std::string archiveName = (boost::format("%s_%03d.vpk") % m_name % file.index).str();
-					fs::path archivePath(m_srcdir);
-					archivePath /= archiveName;
-					boost::shared_ptr<fs::ifstream> archive;
-						
-					if (archives.find(archiveName) != archives.end()) {
-						archive = archives[archiveName];
-						if (!archive) {
-							continue;
-						}
-					}
-					else {
-						if (!fs::exists(archivePath)) {
-							archiveerror("archive does not exist", archivePath);
+					if (!fs::exists(archivePath)) {
+						archiveerror("archive does not exist", archivePath);
 
-							archives[archiveName] = boost::shared_ptr<fs::ifstream>();
-							continue;
-						}
-						archive.reset(new fs::ifstream);
-						archive->exceptions(std::ios::failbit | std::ios::badbit);
-						archive->open(archivePath, std::ios::in | std::ios::binary);
-						archives[archiveName] = archive;
-					}
-
-					archive->seekg(file.offset);
-					char data[BUFSIZ];
-					size_t left = file.size;
-					bool fail = false;
-					while (left > 0) {
-						size_t count = std::min(left, (size_t)BUFSIZ);
-						try {
-							archive->read(data, count);
-						}
-						catch (const std::exception& exc) {
-							archiveerror(exc, archivePath);
-							fail = true;
-							break;
-						}
-
-						try {
-							handler->process(data, count);
-						}
-						catch (const std::exception& exc) {
-							fileerror(exc, filepath);
-							fail = true;
-							break;
-						}
-
-						left -= count;
-					}
-
-					if (fail) continue;
-					
-					try {
-						handler->finish();
-					}
-					catch (const std::exception& exc) {
-						fileerror(exc, filepath);
+						archives[archiveName] = boost::shared_ptr<fs::ifstream>();
 						continue;
 					}
-					
-					if (!file.data.empty()) {
-						std::string smallpath = filepath.string() + ".smalldata";
+					archive.reset(new fs::ifstream);
+					archive->exceptions(std::ios::failbit | std::ios::badbit);
+					archive->open(archivePath, std::ios::in | std::ios::binary);
+					archives[archiveName] = archive;
+				}
 
-						try {
-							handler.reset(factory.create(smallpath, file.crc32));
-							handler->process((char*) &file.data[0], file.data.size());
-							handler->finish();
-						}
-						catch (const std::exception& exc) {
-							fileerror(exc, smallpath);
-							continue;
-						}
+				archive->seekg(file->offset);
+				char data[BUFSIZ];
+				size_t left = file->size;
+				bool fail = false;
+				while (left > 0) {
+					size_t count = std::min(left, (size_t)BUFSIZ);
+					try {
+						archive->read(data, count);
+					}
+					catch (const std::exception& exc) {
+						std::cerr << "\nreading: " << archivePath << std::endl;
+						archiveerror(exc, archivePath);
+						fail = true;
+						break;
 					}
 
-					if (m_handler) m_handler->success(filepath.string());
+					try {
+						dataHandler->process(data, count);
+					}
+					catch (const std::exception& exc) {
+						std::cerr << "\nprocess: " << path << std::endl;
+						fileerror(exc, path);
+						fail = true;
+						break;
+					}
+
+					left -= count;
 				}
+
+				if (fail) continue;
+					
+				try {
+					dataHandler->finish();
+				}
+				catch (const std::exception& exc) {
+					fileerror(exc, path);
+					continue;
+				}
+					
+				if (!file->data.empty()) {
+					std::string smallpath = path + ".smalldata";
+
+					try {
+						dataHandler.reset(factory.create(smallpath, file->crc32));
+						dataHandler->process((char*) &file->data[0], file->data.size());
+						dataHandler->finish();
+					}
+					catch (const std::exception& exc) {
+						std::cerr << "\ncreate+process+finish additional small: " << path << std::endl;
+						fileerror(exc, smallpath);
+						continue;
+					}
+				}
+
+				if (m_handler) m_handler->success(path);
 			}
 		}
 	}
+}
+
+void Vpk::Package::process(DataHandlerFactory &factory) const {
+	Archives archives;
+
+	if (m_handler) m_handler->begin(*this);
+
+	process(m_nodes, std::vector<std::string>(), archives, factory);
 
 	if (m_handler) m_handler->end();
 }

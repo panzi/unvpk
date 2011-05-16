@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include <vpk/io.h>
-#include <vpk/dir.h>
+#include <vpk/file.h>
 #include <vpk/file_format_error.h>
 
 void Vpk::File::read(std::istream &is) {

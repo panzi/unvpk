@@ -36,10 +36,10 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	Vpk::ConsoleHandler handler;
+	Vpk::ConsoleHandler handler(true);
 	Vpk::Package package(&handler);
 
-	try {
+//	try {
 		if (archive == "-") {
 			std::cin.exceptions(std::ios::failbit | std::ios::badbit);
 			package.read(".", "", std::cin);
@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) {
 		else if (command == "c") {
 			package.check();
 		}
-	}
-	catch (const std::exception &exc) {
-		std::cerr << "*** error: " << exc.what() << std::endl;
-		return 1;
-	}
+//	}
+//	catch (const std::exception &exc) {
+//		std::cerr << "*** error: " << exc.what() << std::endl;
+//		return 1;
+//	}
 
 	return handler.allok() ? 0 : 1;
 }

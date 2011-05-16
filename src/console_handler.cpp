@@ -9,6 +9,8 @@ void Vpk::ConsoleHandler::end() {
 }
 
 void Vpk::ConsoleHandler::direrror(const std::exception &exc, const std::string &path) {
+	if (m_extracting) std::cout << std::endl;
+
 	if (m_raise) {
 		throw exc;
 	}
@@ -41,7 +43,12 @@ void Vpk::ConsoleHandler::archiveerror(const std::exception &exc, const std::str
 }
 
 void Vpk::ConsoleHandler::extract(const std::string &filepath) {
-	m_extracting = true;
+	if (m_extracting) {
+		std::cout << std::endl;
+	}
+	else {
+		m_extracting = true;
+	}
 	print(filepath);
 }
 

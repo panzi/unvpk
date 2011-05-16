@@ -12,10 +12,13 @@ add_executable(unvpk
 	src/file.cpp
 	src/io.cpp
 	src/package.cpp
-	src/type.cpp
 	src/console_handler.cpp
 	src/checking_data_handler.cpp
 	src/file_data_handler.cpp
+)
+
+install(TARGETS unvpk
+	RUNTIME DESTINATION bin
 )
 
 target_link_libraries(unvpk

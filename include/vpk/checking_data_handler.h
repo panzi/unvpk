@@ -18,7 +18,7 @@ namespace Vpk {
 		void finish();
 	
 	private:
-		boost::crc_optimal<32> m_hash;
+		boost::crc_32_type m_hash;
 	};
 }
 

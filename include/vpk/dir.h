@@ -2,28 +2,26 @@
 #define VPK_DIR_H
 
 #include <iostream>
-#include <vector>
 #include <string>
 
-#include <vpk/file.h>
+#include <vpk/node.h>
 
 namespace Vpk {
-	class Dir {
+	class Dir : public Node {
 	public:
-		Dir(const std::string &name) : m_name(name), m_files() {}
+		Dir(const std::string &name) : Node(name) {}
 
-		void read(std::istream &is);
+		Type type() const { return Node::DIR; }
+		void read(std::istream &is, const std::string &type);
 
-		const std::string &name()  const { return m_name; }
-		const Files       &files() const { return m_files; }
-		      Files       &files()       { return m_files; }
+		const Nodes &nodes() const { return m_nodes; }
+		      Nodes &nodes()       { return m_nodes; }
 	
 	private:
-		std::string m_name;
-		Files       m_files;
+		Nodes m_nodes;
 	};
-
-	typedef std::vector<Dir> Dirs;
+	
+	typedef boost::shared_ptr<Dir> DirPtr;
 }
 
 #endif
