@@ -25,6 +25,7 @@
 #include <memory.h>
 
 #include <iostream>
+#include <limits>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -67,16 +68,12 @@ static int vpkfuse_opt_proc(void *data, const char *arg, int key, struct fuse_ar
 			"    -c   --version      print version\n"
 			"\n"
 			"VPK Options:\n"
-			"    -o archive=ARCHIVE  the VPK that shall be mounted\n";
-//		fuse_opt_add_arg(outargs, "-ho");
-//		fuse_main(outargs->argc, outargs->argv, &my_operations, NULL);
+			"    -o archive=ARCHIVE  the VPK archive that shall be mounted\n";
 		((struct vpkfuse_config*) data)->run = false;
 		return 0;
 
 	case KEY_VERSION:
 		std::cout << "vpkfuse version " << Vpk::VERSION << std::endl;
-//		fuse_opt_add_arg(outargs, "--version");
-//		fuse_main(outargs->argc, outargs->argv, &my_operations, NULL);
 		((struct vpkfuse_config*) data)->run = false;
      }
      return 1;
@@ -241,54 +238,78 @@ int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 }
 
 int Vpk::Fuse::open(const char *path, struct fuse_file_info *fi) {
+	Descrs::iterator di = m_descrs.find(path);
+
+	if (di != m_descrs.end()) {
+		fi->fh = di->second;
+		return 0;
+	}
+
 	Node *node = m_package.get(path);
 	
 	if (!node)
 		return -ENOENT;
 
+	if (node->type() == Node::DIR)
+		return -EISDIR;
+
 	if((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
+
+	// find free file descriptor
+	uint64_t max = std::numeric_limits<uint64_t>::max();
+	for (uint64_t fd = 1;; ++ fd) {
+		if (m_filemap.find(fd) == m_filemap.end()) {
+			m_descrs[path] = fi->fh = fd;
+			m_filemap[fd] = std::pair<std::string,File*>(path, (File*) node);
+			break;
+		}
+
+		if (fd == max)
+			return -ENFILE;
+	}
 
 	return 0;
 }
 
+boost::shared_ptr<boost::filesystem::ifstream> Vpk::Fuse::archive(uint16_t index) {
+	Archives::iterator i = m_archives.find(index);
+	if (i != m_archives.end()) {
+		return i->second;
+	}
+	else {
+		fs::path archivePath(m_package.srcdir());
+		archivePath /= (boost::format("%s_%03d.vpk") % m_package.name() % index).str();
+
+		if (!fs::exists(archivePath)) {
+			std::cerr << "*** archive does not exist: " << archivePath << std::endl;
+			return boost::shared_ptr<boost::filesystem::ifstream>();
+		}
+		boost::shared_ptr<boost::filesystem::ifstream> archive(
+			new fs::ifstream(archivePath, std::ios::in | std::ios::binary));
+		return m_archives[index] = archive;
+	}
+}
+
 int Vpk::Fuse::read(const char *path, char *buf, size_t size, off_t offset,
          struct fuse_file_info *fi) {
-	Node *node = m_package.get(path);
-	
-	if (!node) {
-		return -ENOENT;
+	Filemap::iterator i = m_filemap.find(fi->fh);
+
+	if (i == m_filemap.end()) {
+		return -EBADF;
 	}
 
-	if (node->type() == Node::DIR) {
-		return -EISDIR;
-	}
-
-	File *file = (File*) node;
+	File *file = i->second.second;
 
 	if (file->size) {
 		if (offset >= file->size) {
 			return 0;
 		}
-		std::string archiveName = (boost::format("%s_%03d.vpk")
-			% m_package.name() % file->index).str();
-		boost::shared_ptr<fs::ifstream> archive;
+		boost::shared_ptr<fs::ifstream> archive = this->archive(file->index);
 
-		Package::Archives::iterator i = m_archives.find(archiveName);
-		if (i != m_archives.end()) {
-			archive = i->second;
-		}
-		else {
-			fs::path archivePath(m_package.srcdir());
-			archivePath /= archiveName;
+		if (!archive)
+			return 0;
 
-			if (!fs::exists(archivePath)) {
-				std::cerr << "*** archive does not exist: " << archivePath << std::endl;
-				return 0;
-			}
-			archive.reset(new fs::ifstream(archivePath, std::ios::in | std::ios::binary));
-			m_archives[archiveName] = archive;
-		}
 		size_t n = std::min(size, (size_t)(file->size - offset));
 		archive->seekg(file->offset + offset);
 		archive->read(buf, n);
@@ -296,7 +317,7 @@ int Vpk::Fuse::read(const char *path, char *buf, size_t size, off_t offset,
 
 		if (archive->bad()) {
 			archive->close();
-			m_archives.erase(archiveName);
+			m_archives.erase(file->index);
 		}
 		
 		return n;
@@ -309,4 +330,17 @@ int Vpk::Fuse::read(const char *path, char *buf, size_t size, off_t offset,
 		memcpy(buf, &file->data[offset], n);
 		return n;
 	}
+}
+
+int Vpk::Fuse::release(const char *path, struct fuse_file_info *fi) {
+	Filemap::iterator i = m_filemap.find(fi->fh);
+
+	if (i == m_filemap.end()) {
+		return -EBADF;
+	}
+
+	m_descrs.erase(i->second.first);
+	m_filemap.erase(fi->fh);
+
+	return 0;
 }

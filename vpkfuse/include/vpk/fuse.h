@@ -21,12 +21,13 @@
 
 #include <fstream>
 
+#include <boost/unordered_map.hpp>
+
 #include <fuse.h>
 
 #include <vpk/console_handler.h>
 #include <vpk/package.h>
 
-// TODO: improve read performance
 namespace Vpk {
 	class Fuse {
 	public:
@@ -39,20 +40,23 @@ namespace Vpk {
 		int open(const char *path, struct fuse_file_info *fi);
 		int read(const char *path, char *buf, size_t size, off_t offset,
 		         struct fuse_file_info *fi);
-		int release(const char *path, struct fuse_file_info *fi) { return 0; }
+		int release(const char *path, struct fuse_file_info *fi);
+
+		boost::shared_ptr<boost::filesystem::ifstream> archive(uint16_t index);
 	
 	private:
-//		typedef std::unordered_map< int, boost::shared_ptr<Filehandle> > Filemap;
-//		typedef std::unordered_map< std::string, int > Descrs;
+		typedef boost::unordered_map< uint64_t, std::pair<std::string, File*> > Filemap;
+		typedef boost::unordered_map< std::string, uint64_t > Descrs;
+		typedef boost::unordered_map< uint16_t, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
 
-		struct fuse_args   m_args;
-		bool               m_run;
-		std::string        m_archive;
-		ConsoleHandler     m_handler;
-		Package            m_package;
-		Package::Archives  m_archives;
-//		Filemap            m_filemap;
-//		Descrs             m_descrs;
+		struct fuse_args m_args;
+		bool             m_run;
+		std::string      m_archive;
+		ConsoleHandler   m_handler;
+		Package          m_package;
+		Archives         m_archives;
+		Filemap          m_filemap;
+		Descrs           m_descrs;
 	};
 }
 
