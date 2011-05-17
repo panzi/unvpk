@@ -25,6 +25,7 @@
 #include <boost/program_options.hpp>
 
 #include <vpk.h>
+#include <vpk/console_handler.h>
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;

@@ -16,23 +16,37 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_H
-#define VPK_H
+#ifndef VPK_NODE_H
+#define VPK_NODE_H
 
-#include <vpk/version.h>
-#include <vpk/package.h>
-#include <vpk/node.h>
-#include <vpk/dir.h>
-#include <vpk/file.h>
-#include <vpk/handler.h>
-#include <vpk/data_handler.h>
-#include <vpk/data_handler_factory.h>
-#include <vpk/checking_data_handler.h>
-#include <vpk/checking_data_handler_factory.h>
-#include <vpk/file_data_handler.h>
-#include <vpk/file_data_handler_factory.h>
-#include <vpk/console_handler.h>
-#include <vpk/exception.h>
-#include <vpk/file_format_error.h>
+#include <iostream>
+#include <string>
+#include <map>
+
+#include <boost/shared_ptr.hpp>
+
+namespace Vpk {
+	class Node {
+	public:
+		enum Type {
+			FILE,
+			DIR
+		};
+
+		Node(const std::string& name) : m_name(name) {}
+		virtual ~Node() {}
+		
+		virtual Type type() const = 0;
+
+		void setName(const std::string &name) { m_name = name; }
+		const std::string &name() const { return m_name; }
+
+	private:
+		std::string m_name;
+	};
+
+	typedef boost::shared_ptr<Node>       NodePtr;
+	typedef std::map<std::string,NodePtr> Nodes;
+}
 
 #endif

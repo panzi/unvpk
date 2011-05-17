@@ -28,17 +28,17 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <vpk/node.h>
+#include <vpk/dir.h>
 #include <vpk/handler.h>
 #include <vpk/data_handler_factory.h>
 
 namespace Vpk {
-	class Dir;
 	class File;
 
-	class Package {
+	class Package : public Dir {
 	public:
 		Package(Handler *handler = 0) :
-			m_name(), m_srcdir("."), m_nodes(), m_handler(handler) {}
+			Dir(""), m_srcdir("."), m_handler(handler) {}
 
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
@@ -48,11 +48,8 @@ namespace Vpk {
 		Dir &mkpath(const std::string &path);
 		Dir &mkpath(const std::vector<std::string> &path);
 
-		const std::string &name() const { return m_name; }
 		const std::string &srcdir() const { return m_srcdir; }
-		const Nodes &nodes() const { return m_nodes; }
-		      Nodes &nodes()       { return m_nodes; }
-		      Node  *get(const std::string &path);
+		Node *get(const std::string &path);
 		void setHandler(Handler *handler) { m_handler = handler; }
 		const Handler *handler() const { return m_handler; }
 
@@ -67,8 +64,9 @@ namespace Vpk {
 
 		size_t filecount() const;
 
-	private:
 		typedef std::map<std::string, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
+
+	private:
 		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
 
 		void read(std::istream &is);
@@ -88,9 +86,7 @@ namespace Vpk {
 		bool error(const std::string &msg, const std::string &path, ErrorMethod handler) const;
 		bool error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
 
-		std::string m_name;
 		std::string m_srcdir;
-		Nodes       m_nodes;
 		Handler    *m_handler;
 	};
 }

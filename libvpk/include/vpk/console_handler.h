@@ -43,6 +43,8 @@ namespace Vpk {
 		void extract(const std::string &filepath);
 		void success(const std::string &filepath);
 	
+		void setRaise(bool raise) { m_raise = raise; }
+
 		bool         ok()        const { return m_fail == 0; }
 		bool         allok()     const { return m_fail == 0 && m_success == m_filecount; }
 		bool         raise()     const { return m_raise; }

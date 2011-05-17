@@ -1,5 +1,5 @@
 /**
- * unvpk - list, check and extract vpk archives
+ * vpkfuse - mount vpk archives
  * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
@@ -16,36 +16,14 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_NODE_H
-#define VPK_NODE_H
+#include <vpk/fuse.h>
 
-#include <iostream>
-#include <string>
-#include <map>
-
-#include <boost/shared_ptr.hpp>
-
-namespace Vpk {
-	class Node {
-	public:
-		enum Type {
-			FILE,
-			DIR
-		};
-
-		Node(const std::string& name) : m_name(name) {}
-		virtual ~Node() {}
-		
-		virtual Type type() const = 0;
-
-		const std::string &name() const { return m_name; }
-
-	private:
-		std::string m_name;
-	};
-
-	typedef boost::shared_ptr<Node>       NodePtr;
-	typedef std::map<std::string,NodePtr> Nodes;
+int main(int argc, char *argv[]) {
+	try {
+		return Vpk::Fuse(argc, argv).run();
+	}
+	catch (const std::exception &exc) {
+		std::cerr << "*** error: " << exc.what() << std::endl;
+		return 1;
+	}
 }
-
-#endif

@@ -32,7 +32,6 @@
 #include <vpk/file.h>
 #include <vpk/package.h>
 #include <vpk/file_format_error.h>
-#include <vpk/console_handler.h>
 #include <vpk/file_data_handler_factory.h>
 #include <vpk/checking_data_handler_factory.h>
 
@@ -59,16 +58,16 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 			if (m_handler->archiveerror(exc, path.string())) {
 				throw exc;
 			}
-			m_name = filename;
+			setName(filename);
 		}
 		else {
 			throw exc;
 		}
 	}
 	else {
-		m_name = filename.substr(0, filename.size()-8);
+		setName(filename.substr(0, filename.size()-8));
 	}
-	m_srcdir = path.parent_path().string();
+	m_srcdir = fs::system_complete(path).parent_path().string();
 
 	fs::ifstream is;
 	is.exceptions(std::ios::failbit | std::ios::badbit);
@@ -77,8 +76,8 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 }
 
 void Vpk::Package::read(const std::string &srcdir, const std::string &name, std::istream &is) {
-	m_srcdir = srcdir;
-	m_name   = name;
+	m_srcdir = fs::system_complete(srcdir).string();
+	setName(name);
 	read(is);
 }
 
@@ -124,7 +123,7 @@ Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
 	}
 	
 	Dir *dir = 0;
-	Nodes *nodes = &m_nodes;
+	Nodes *nodes = &this->nodes();
 	for (std::vector<std::string>::const_iterator ip = path.begin(); ip != path.end(); ++ ip) {
 		const std::string &name = *ip;
 		Nodes::iterator in = nodes->find(name);
@@ -152,15 +151,17 @@ Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
 }
 
 Vpk::Node *Vpk::Package::get(const std::string &path) {
+	if (path == "/") return this;
+
 	std::vector<std::string> pathvec;
 	algo::split(pathvec, path, algo::is_any_of("/"));
 
-	if (pathvec.empty()) {
-		return 0;
-	}
+	if (pathvec.empty()) return 0;
+	// remove remnants of "/" at the beginning
+	if (pathvec[0].size() == 0) pathvec.erase(pathvec.begin());
 
-	Node  *node  = 0;
-	Nodes *nodes = &m_nodes;
+	Node  *node  = this;
+	Nodes *nodes = &this->nodes();
 	std::vector<std::string>::const_iterator ip = pathvec.begin();
 	while (ip != pathvec.end()) {
 		const std::string &name = *ip;
@@ -200,7 +201,7 @@ static size_t filecount(const Vpk::Nodes &nodes) {
 }
 
 size_t Vpk::Package::filecount() const {
-	return ::filecount(m_nodes);
+	return ::filecount(nodes());
 }
 
 static void list(const Vpk::Nodes &nodes, const std::vector<std::string> &prefix, std::ostream &os) {
@@ -218,7 +219,7 @@ static void list(const Vpk::Nodes &nodes, const std::vector<std::string> &prefix
 }
 
 void Vpk::Package::list(std::ostream &os) const {
-	::list(m_nodes, std::vector<std::string>(), os);
+	::list(nodes(), std::vector<std::string>(), os);
 }
 
 void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {
@@ -260,7 +261,7 @@ void Vpk::Package::filter(const std::vector<std::string> &paths) {
 		}
 	}
 
-	filter(m_nodes, keep);
+	filter(nodes(), keep);
 }
 
 bool Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {
@@ -323,11 +324,11 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 			}
 			else {
-				std::string archiveName = (boost::format("%s_%03d.vpk") % m_name % file->index).str();
+				std::string archiveName = (boost::format("%s_%03d.vpk") % name() % file->index).str();
 				fs::path archivePath(m_srcdir);
 				archivePath /= archiveName;
 				boost::shared_ptr<fs::ifstream> archive;
-						
+				
 				if (archives.find(archiveName) != archives.end()) {
 					archive = archives[archiveName];
 					if (!archive) {
@@ -378,7 +379,7 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 
 				if (fail) continue;
-					
+				
 				try {
 					dataHandler->finish();
 				}
@@ -412,7 +413,7 @@ void Vpk::Package::process(DataHandlerFactory &factory) const {
 
 	if (m_handler) m_handler->begin(*this);
 
-	process(m_nodes, std::vector<std::string>(), archives, factory);
+	process(nodes(), std::vector<std::string>(), archives, factory);
 
 	if (m_handler) m_handler->end();
 }
