@@ -92,7 +92,7 @@ Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
 	fuse_opt_parse(&m_args, &conf, vpkfuse_opts, vpkfuse_opt_proc);
 
 	if (conf.archive) {
-		m_archive = conf.archive;
+		m_archive = fs::system_complete(conf.archive).string();
 		m_run     = conf.run;
 	}
 	else {
@@ -183,6 +183,7 @@ int Vpk::Fuse::run() {
 	return fuse_main(m_args.argc, m_args.argv, &vpkfuse_operations, this);
 }
 
+// only minimal stat:
 static struct stat * vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
 	if (node->type() == Vpk::Node::DIR) {
 		stbuf->st_mode  = S_IFDIR | 0755;
@@ -206,8 +207,25 @@ int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
 	}
 
 	vpk_stat(node, stbuf);
+	std::string archive;
 
-	return 0;
+	if (node->type() == Vpk::Node::FILE && ((File*) node)->size) {
+		archive = archivePath(((File*) node)->index).string();
+	}
+	else {
+		archive = m_archive;
+	}
+
+	struct stat archst;
+	int code = stat(archive.c_str(), &archst);
+
+	if (code == 0) {
+		stbuf->st_atime = archst.st_atime;
+		stbuf->st_ctime = archst.st_ctime;
+		stbuf->st_mtime = archst.st_mtime;
+	}
+
+	return code;
 }
 
 int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
@@ -225,13 +243,13 @@ int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	struct stat stbuf;
 	memset(&stbuf, 0, sizeof(struct stat));
 
-	filler(buf, ".", vpk_stat(node, &stbuf), 0);
-	filler(buf, "..", NULL, 0);
+	if (filler(buf, ".", vpk_stat(node, &stbuf), 0)) return 0;
+	if (filler(buf, "..", NULL, 0)) return 0;
 
 	const Nodes &nodes = ((Dir*) node)->nodes();
 	for (Nodes::const_iterator i = nodes.begin(); i != nodes.end(); ++ i) {
 		const Node *child = i->second.get();
-		filler(buf, child->name().c_str(), vpk_stat(child, &stbuf), 0);
+		if (filler(buf, child->name().c_str(), vpk_stat(child, &stbuf), 0)) return 0;
 	}
 
 	return 0;
@@ -272,14 +290,18 @@ int Vpk::Fuse::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
+boost::filesystem::path Vpk::Fuse::archivePath(uint16_t index) const {
+	return fs::path(m_package.srcdir()) /
+		(boost::format("%s_%03d.vpk") % m_package.name() % index).str();
+}
+
 boost::shared_ptr<boost::filesystem::ifstream> Vpk::Fuse::archive(uint16_t index) {
 	Archives::iterator i = m_archives.find(index);
 	if (i != m_archives.end()) {
 		return i->second;
 	}
 	else {
-		fs::path archivePath(m_package.srcdir());
-		archivePath /= (boost::format("%s_%03d.vpk") % m_package.name() % index).str();
+		fs::path archivePath(this->archivePath(index));
 
 		if (!fs::exists(archivePath)) {
 			std::cerr << "*** archive does not exist: " << archivePath << std::endl;

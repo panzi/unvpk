@@ -42,6 +42,7 @@ namespace Vpk {
 		         struct fuse_file_info *fi);
 		int release(const char *path, struct fuse_file_info *fi);
 
+		boost::filesystem::path archivePath(uint16_t index) const;
 		boost::shared_ptr<boost::filesystem::ifstream> archive(uint16_t index);
 	
 	private:
