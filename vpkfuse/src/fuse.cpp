@@ -220,6 +220,9 @@ int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
 	int code = stat(archive.c_str(), &archst);
 
 	if (code == 0) {
+		stbuf->st_uid = archst.st_uid;
+		stbuf->st_gid = archst.st_gid;
+		stbuf->st_blksize = archst.st_blksize;
 		stbuf->st_atime = archst.st_atime;
 		stbuf->st_ctime = archst.st_ctime;
 		stbuf->st_mtime = archst.st_mtime;
