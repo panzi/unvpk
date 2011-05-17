@@ -186,7 +186,7 @@ int Vpk::Fuse::run() {
 // only minimal stat:
 static struct stat * vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
 	if (node->type() == Vpk::Node::DIR) {
-		stbuf->st_mode  = S_IFDIR | 0755;
+		stbuf->st_mode  = S_IFDIR | 0555;
 		stbuf->st_nlink = 2;
 	}
 	else {
@@ -229,7 +229,7 @@ int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
 }
 
 int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-            off_t offset, struct fuse_file_info *fi) {
+                       off_t offset, struct fuse_file_info *fi) {
 	Node *node = m_package.get(path);
 	
 	if (!node) {
