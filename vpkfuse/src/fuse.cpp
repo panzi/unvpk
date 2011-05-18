@@ -92,6 +92,9 @@ Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
 	struct vpkfuse_config conf = { NULL, true };
 
 	fuse_opt_parse(&m_args, &conf, vpkfuse_opts, vpkfuse_opt_proc);
+	
+	// force single threaded:
+	fuse_opt_insert_arg(&m_args, 1, "-s");
 
 	if (conf.archive) {
 		m_archive = fs::system_complete(conf.archive).string();
