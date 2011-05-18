@@ -31,6 +31,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <vpk/version.h>
+#include <vpk/exception.h>
 #include <vpk/file.h>
 #include <vpk/fuse.h>
 
@@ -82,7 +83,8 @@ static int vpkfuse_opt_proc(void *data, const char *arg, int key, struct fuse_ar
 Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
 		: m_run(true),
 		  m_handler(true),
-		  m_package(&this->m_handler) {
+		  m_package(&this->m_handler),
+		  m_files(0) {
 	m_args.argc = argc;
 	m_args.argv = argv;
 	m_args.allocated = allocated;
@@ -128,6 +130,11 @@ static int vpk_release(const char *path, struct fuse_file_info *fi) {
 		path, fi);
 }
 
+static int vpk_statfs(const char *path, struct statvfs *stbuf) {
+	return ((Vpk::Fuse*) fuse_get_context()->private_data)->statfs(
+		path, stbuf);
+}
+
 static struct fuse_operations vpkfuse_operations = {
 	/* getattr          */ vpk_getattr,
 	/* readlink         */ 0,
@@ -146,7 +153,7 @@ static struct fuse_operations vpkfuse_operations = {
 	/* open             */ vpk_open,
 	/* read             */ vpk_read,
 	/* write            */ 0,
-	/* statfs           */ 0,
+	/* statfs           */ vpk_statfs,
 	/* flush            */ 0,
 	/* release          */ vpk_release,
 	/* fsync            */ 0,
@@ -173,6 +180,22 @@ static struct fuse_operations vpkfuse_operations = {
 	/* poll             */ 0
 };
 
+void Vpk::Fuse::statfs(const Node *node) {
+	++ m_files;
+	if (node->type() == Node::DIR) {
+		const Nodes &nodes = ((const Dir*) node)->nodes();
+		for (Nodes::const_iterator i = nodes.begin(); i != nodes.end(); ++ i) {
+			statfs(i->second.get());
+		}
+	}
+	else {
+		uint16_t arch = ((const File*) node)->index;
+		if (m_indices.find(arch) == m_indices.end()) {
+			m_indices.insert(arch);
+		}
+	}
+}
+
 int Vpk::Fuse::run() {
 	if (!m_run) return 0;
 
@@ -180,11 +203,15 @@ int Vpk::Fuse::run() {
 	m_package.read(m_archive);
 	m_handler.setRaise(false);
 
+	m_files = 0;
+	statfs(&m_package);
+
 	return fuse_main(m_args.argc, m_args.argv, &vpkfuse_operations, this);
 }
 
 // only minimal stat:
-static struct stat * vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
+static struct stat *vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
+	stbuf->st_ino = (ino_t) node;
 	if (node->type() == Vpk::Node::DIR) {
 		stbuf->st_mode  = S_IFDIR | 0555;
 		stbuf->st_nlink = 2;
@@ -210,7 +237,7 @@ int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
 	std::string archive;
 
 	if (node->type() == Vpk::Node::FILE && ((File*) node)->size) {
-		archive = archivePath(((File*) node)->index).string();
+		archive = m_package.archivePath(((File*) node)->index).string();
 	}
 	else {
 		archive = m_archive;
@@ -293,18 +320,13 @@ int Vpk::Fuse::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-boost::filesystem::path Vpk::Fuse::archivePath(uint16_t index) const {
-	return fs::path(m_package.srcdir()) /
-		(boost::format("%s_%03d.vpk") % m_package.name() % index).str();
-}
-
 boost::shared_ptr<boost::filesystem::ifstream> Vpk::Fuse::archive(uint16_t index) {
 	Archives::iterator i = m_archives.find(index);
 	if (i != m_archives.end()) {
 		return i->second;
 	}
 	else {
-		fs::path archivePath(this->archivePath(index));
+		fs::path archivePath(m_package.archivePath(index));
 
 		if (!fs::exists(archivePath)) {
 			std::cerr << "*** archive does not exist: " << archivePath << std::endl;
@@ -366,6 +388,38 @@ int Vpk::Fuse::release(const char *path, struct fuse_file_info *fi) {
 
 	m_descrs.erase(i->second.first);
 	m_filemap.erase(fi->fh);
+
+	return 0;
+}
+
+int Vpk::Fuse::statfs(const char *path, struct statvfs *stbuf) {
+	struct stat archst;
+	fsfilcnt_t fssize = 0;
+	memset(stbuf, 0, sizeof(struct statvfs));
+
+	int code = stat(m_archive.c_str(), &archst);
+	if (code != 0) {
+		return code;
+	}
+
+	fssize = archst.st_size;
+	stbuf->f_bsize   = archst.st_blksize;
+	stbuf->f_files   = m_files;
+	stbuf->f_namemax = std::numeric_limits<unsigned long>::max();
+	
+	for (boost::unordered_set<uint16_t>::const_iterator i = m_indices.begin();
+			i != m_indices.end(); ++ i) {
+		code = stat(m_package.archivePath(*i).string().c_str(), &archst);
+
+		if (code != 0) {
+			return code;
+		}
+
+		fssize += archst.st_size;
+	}
+	
+	// ceiling integer division:
+	stbuf->f_blocks = (fssize + stbuf->f_bsize - 1) / stbuf->f_bsize;
 
 	return 0;
 }

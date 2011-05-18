@@ -24,6 +24,7 @@
 #include <set>
 #include <map>
 
+#include <boost/unordered_map.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/fstream.hpp>
 
@@ -48,6 +49,7 @@ namespace Vpk {
 		Dir &mkpath(const std::string &path);
 		Dir &mkpath(const std::vector<std::string> &path);
 
+		boost::filesystem::path archivePath(uint16_t index) const;
 		const std::string &srcdir() const { return m_srcdir; }
 		Node *get(const std::string &path);
 		void setHandler(Handler *handler) { m_handler = handler; }
@@ -64,7 +66,7 @@ namespace Vpk {
 
 		size_t filecount() const;
 
-		typedef std::map<std::string, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
+		typedef boost::unordered_map< uint16_t, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
 
 	private:
 		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);

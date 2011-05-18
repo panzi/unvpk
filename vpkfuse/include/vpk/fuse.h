@@ -19,9 +19,12 @@
 #ifndef VPK_FUSE_H
 #define VPK_FUSE_H
 
+#include <sys/statvfs.h>
+
 #include <fstream>
 
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 
 #include <fuse.h>
 
@@ -41,11 +44,13 @@ namespace Vpk {
 		int read(const char *path, char *buf, size_t size, off_t offset,
 		         struct fuse_file_info *fi);
 		int release(const char *path, struct fuse_file_info *fi);
+		int statfs(const char *path, struct statvfs *stbuf);
 
-		boost::filesystem::path archivePath(uint16_t index) const;
 		boost::shared_ptr<boost::filesystem::ifstream> archive(uint16_t index);
 	
 	private:
+		void statfs(const Node *node);
+
 		typedef boost::unordered_map< uint64_t, std::pair<std::string, File*> > Filemap;
 		typedef boost::unordered_map< std::string, uint64_t > Descrs;
 		typedef boost::unordered_map< uint16_t, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
@@ -58,6 +63,8 @@ namespace Vpk {
 		Archives         m_archives;
 		Filemap          m_filemap;
 		Descrs           m_descrs;
+		fsfilcnt_t       m_files;
+		boost::unordered_set<uint16_t> m_indices;
 	};
 }
 

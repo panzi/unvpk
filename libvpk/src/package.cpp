@@ -277,6 +277,11 @@ bool Vpk::Package::error(const std::exception &exc, const std::string &path, Err
 	}
 }
 
+boost::filesystem::path Vpk::Package::archivePath(uint16_t index) const {
+	return fs::path(m_srcdir) /
+		(boost::format("%s_%03d.vpk") % name() % index).str();
+}
+
 void Vpk::Package::extract(const std::string &destdir, bool check) const {
 	FileDataHandlerFactory factory(destdir, check);
 	process(factory);
@@ -324,31 +329,30 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 			}
 			else {
-				std::string archiveName = (boost::format("%s_%03d.vpk") % name() % file->index).str();
-				fs::path archivePath(m_srcdir);
-				archivePath /= archiveName;
 				boost::shared_ptr<fs::ifstream> archive;
 				
-				if (archives.find(archiveName) != archives.end()) {
-					archive = archives[archiveName];
+				Archives::iterator i = archives.find(file->index);
+				if (i != archives.end()) {
+					archive = i->second;
 					if (!archive) {
 						continue;
 					}
 				}
 				else {
+					fs::path archivePath(this->archivePath(file->index));
 					if (!fs::exists(archivePath)) {
 						Exception exc("archive does not exist");
 						if (archiveerror(exc, archivePath.string())) {
 							throw exc;
 						}
 
-						archives[archiveName] = boost::shared_ptr<fs::ifstream>();
+						archives[file->index] = boost::shared_ptr<fs::ifstream>();
 						continue;
 					}
 					archive.reset(new fs::ifstream);
 					archive->exceptions(std::ios::failbit | std::ios::badbit);
 					archive->open(archivePath, std::ios::in | std::ios::binary);
-					archives[archiveName] = archive;
+					archives[file->index] = archive;
 				}
 
 				archive->seekg(file->offset);
@@ -361,7 +365,7 @@ void Vpk::Package::process(const Nodes &nodes,
 						archive->read(data, count);
 					}
 					catch (const std::exception& exc) {
-						if (archiveerror(exc, archivePath.string())) throw;
+						if (archiveerror(exc, archivePath(file->index).string())) throw;
 						fail = true;
 						break;
 					}
