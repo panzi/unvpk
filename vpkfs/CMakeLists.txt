@@ -17,7 +17,7 @@ include_directories("../libvpk/include" "include")
 
 add_executable(vpkfs
 	src/main.cpp
-	src/fuse.cpp
+	src/vpkfs.cpp
 )
 
 install(TARGETS vpkfs

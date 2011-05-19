@@ -33,7 +33,7 @@
 #include <vpk/version.h>
 #include <vpk/exception.h>
 #include <vpk/file.h>
-#include <vpk/fuse.h>
+#include <vpk/vpkfs.h>
 #include <vpk/fuse_args.h>
 
 namespace fs = boost::filesystem;
@@ -125,7 +125,7 @@ static int vpkfuse_opt_proc(struct vpkfuse_config *conf, const char *arg, int ke
 	return 1;
 }
 
-Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
+Vpk::Vpkfs::Vpkfs(int argc, char *argv[], bool allocated)
 		: m_args(argc, argv, allocated),
 		  m_flags(VPK_OPTS_OK),
 		  m_handler(true),
@@ -149,7 +149,7 @@ Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
 	m_args.insert_arg(1, "-s");
 }
 
-Vpk::Fuse::Fuse(
+Vpk::Vpkfs::Vpkfs(
 	const std::string &archive,
 	const std::string &mountpoint,
 	const std::string &mountopts)
@@ -171,34 +171,34 @@ Vpk::Fuse::Fuse(
 }
 
 static int vpk_getattr(const char *path, struct stat *stbuf) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->getattr(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->getattr(
 		path, stbuf);
 }
 
 static int vpk_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->readdir(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->readdir(
 		path, buf, filler, offset, fi);
 }
 
 static int vpk_open(const char *path, struct fuse_file_info *fi) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->open(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->open(
 		path, fi);
 }
 
 static int vpk_read(const char *path, char *buf, size_t size, off_t offset,
                     struct fuse_file_info *fi) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->read(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->read(
 		path, buf, size, offset, fi);
 }
 
 static int vpk_release(const char *path, struct fuse_file_info *fi) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->release(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->release(
 		path, fi);
 }
 
 static int vpk_statfs(const char *path, struct statvfs *stbuf) {
-	return ((Vpk::Fuse*) fuse_get_context()->private_data)->statfs(
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->statfs(
 		path, stbuf);
 }
 
@@ -247,7 +247,7 @@ static struct fuse_operations vpkfuse_operations = {
 	/* poll             */ 0
 };
 
-void Vpk::Fuse::statfs(const Node *node) {
+void Vpk::Vpkfs::statfs(const Node *node) {
 	++ m_files;
 	if (node->type() == Node::DIR) {
 		const Nodes &nodes = ((const Dir*) node)->nodes();
@@ -263,7 +263,7 @@ void Vpk::Fuse::statfs(const Node *node) {
 	}
 }
 
-int Vpk::Fuse::run() {
+int Vpk::Vpkfs::run() {
 	if (m_flags & VPK_OPTS_ERROR) return 1;
 	if (m_flags & (VPK_OPTS_HELP | VPK_OPTS_VERSION)) return 0;
 
@@ -293,7 +293,7 @@ static struct stat *vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
 	return stbuf;
 }
 
-int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
+int Vpk::Vpkfs::getattr(const char *path, struct stat *stbuf) {
 	Node *node = m_package.get(path);
 	memset(stbuf, 0, sizeof(struct stat));
 
@@ -326,7 +326,7 @@ int Vpk::Fuse::getattr(const char *path, struct stat *stbuf) {
 	return code;
 }
 
-int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi) {
 	Node *node = m_package.get(path);
 	
@@ -353,7 +353,7 @@ int Vpk::Fuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	return 0;
 }
 
-int Vpk::Fuse::open(const char *path, struct fuse_file_info *fi) {
+int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	Descrs::iterator di = m_descrs.find(path);
 
 	if (di != m_descrs.end()) {
@@ -388,7 +388,7 @@ int Vpk::Fuse::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-boost::shared_ptr<boost::filesystem::ifstream> Vpk::Fuse::archive(uint16_t index) {
+boost::shared_ptr<boost::filesystem::ifstream> Vpk::Vpkfs::archive(uint16_t index) {
 	Archives::iterator i = m_archives.find(index);
 	if (i != m_archives.end()) {
 		return i->second;
@@ -406,7 +406,7 @@ boost::shared_ptr<boost::filesystem::ifstream> Vpk::Fuse::archive(uint16_t index
 	}
 }
 
-int Vpk::Fuse::read(const char *path, char *buf, size_t size, off_t offset,
+int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
          struct fuse_file_info *fi) {
 	Filemap::iterator i = m_filemap.find(fi->fh);
 
@@ -447,7 +447,7 @@ int Vpk::Fuse::read(const char *path, char *buf, size_t size, off_t offset,
 	}
 }
 
-int Vpk::Fuse::release(const char *path, struct fuse_file_info *fi) {
+int Vpk::Vpkfs::release(const char *path, struct fuse_file_info *fi) {
 	Filemap::iterator i = m_filemap.find(fi->fh);
 
 	if (i == m_filemap.end()) {
@@ -460,7 +460,7 @@ int Vpk::Fuse::release(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-int Vpk::Fuse::statfs(const char *path, struct statvfs *stbuf) {
+int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
 	struct stat archst;
 	fsfilcnt_t fssize = 0;
 	memset(stbuf, 0, sizeof(struct statvfs));

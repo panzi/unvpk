@@ -34,10 +34,10 @@
 #include <vpk/fuse_args.h>
 
 namespace Vpk {
-	class Fuse {
+	class Vpkfs {
 	public:
-		Fuse(int argc, char *argv[], bool allocated=false);
-		Fuse(
+		Vpkfs(int argc, char *argv[], bool allocated=false);
+		Vpkfs(
 			const std::string &archive,
 			const std::string &mountpoint,
 			const std::string &mountopts = "");

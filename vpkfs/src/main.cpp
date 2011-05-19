@@ -16,11 +16,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <vpk/fuse.h>
+#include <vpk/vpkfs.h>
 
 int main(int argc, char *argv[]) {
 	try {
-		return Vpk::Fuse(argc, argv).run();
+		return Vpk::Vpkfs(argc, argv).run();
 	}
 	catch (const std::exception &exc) {
 		std::cerr << "*** error: " << exc.what() << std::endl;
