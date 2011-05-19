@@ -66,7 +66,7 @@ For vpkfs FUSE is needed.
 
 Notes
 -----
-This program is written by Mathias Panzenböck and released under the LGPL v2.1.
+This project is written by Mathias Panzenböck and released under the LGPL v2.1.
 However, I looked at the source of [Gibbeds VPK Extractor][3] ([SVN][4]) in
 order to find out how VPK works.
 
