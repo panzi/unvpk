@@ -1,8 +1,8 @@
 UNVPK
 =====
 This project implements a VPK reading facilities. See the subfolder
-[unvpk](unvpk) for a simple extraction tool and the subfolder [vpkfs](vpkfs) for
-a [FUSE][1] based filesystem that allows you to mount VPK archives.
+unvpk for a simple extraction tool and the subfolder vpkfs for a
+[FUSE][1] based filesystem that allows you to mount VPK archives.
 
 VPK archives are used in Valve Source engine based games like Portal 2.
 
