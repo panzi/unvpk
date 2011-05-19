@@ -10,13 +10,11 @@ Usage
 	ARCHIVE has to be a file named "*_dir.vpk".
 	If one or more FILEs are given only these are listed/checked/extracted.
 	
-	Commands:
-	    l                   list archive contents
-	    x                   extract archive
-	    c                   check archive
-	
 	Options:
-	  --help                print help message
-	  --version             print version information
-	  --check               check CRC32 sums during extraction
-	  --stop                stop on error
+	  -h [ --help ]          print help message
+	  -v [ --version ]       print version information
+	  -l [ --list ]          list archive contents
+	  -c [ --check ]         check CRC32 sums
+	  -x [ --xcheck ]        extract and check CRC32 sums
+	  -C [ --directory ] arg extract files into another directory
+	  -s [ --stop ]          stop on error

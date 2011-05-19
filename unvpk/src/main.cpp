@@ -32,15 +32,10 @@ namespace po = boost::program_options;
 
 void usage(const po::options_description &desc) {
 	std::cout <<
-		"Usage: unvpk COMMAND [OPTION...] ARCHIVE [FILE...]\n"
+		"Usage: unvpk [OPTION...] ARCHIVE [FILE...]\n"
 		"List, check and extract VPK archives.\n"
 		"ARCHIVE has to be a file named \"*_dir.vpk\".\n"
 		"If one or more FILEs are given only these are listed/checked/extracted.\n"
-		"\n"
-		"Commands:\n"
-		"    l                   list archive contents\n"
-		"    x                   extract archive\n"
-		"    c                   check archive\n"
 		"\n" <<
 		desc <<
 		"\n"
@@ -50,14 +45,16 @@ void usage(const po::options_description &desc) {
 int main(int argc, char *argv[]) {
 	po::options_description desc("Options");
 	desc.add_options()
-		("help",    "print help message")
-		("version", "print version information")
-		("check",   "check CRC32 sums during extraction")
-		("stop",    "stop on error");
+		("help,h",       "print help message")
+		("version,v",    "print version information")
+		("list,l",       "list archive contents")
+		("check,c",      "check CRC32 sums")
+		("xcheck,x",     "extract and check CRC32 sums")
+		("directory,C",  po::value<std::string>(), "extract files into another directory")
+		("stop,s",       "stop on error");
 
 	po::options_description hidden;
 	hidden.add_options()
-		("command", po::value<std::string>(), "unvpk command")
 		("archive", po::value<std::string>(), "vpk archive")
 		("filter",  po::value< std::vector<std::string> >(), "files to process");
 
@@ -65,7 +62,6 @@ int main(int argc, char *argv[]) {
 	opts.add(desc).add(hidden);
 
 	po::positional_options_description pos;
-	pos.add("command", 1);
 	pos.add("archive", 1);
 	pos.add("filter", -1);
 
@@ -73,7 +69,7 @@ int main(int argc, char *argv[]) {
 	po::store(po::command_line_parser(argc, argv).options(opts).positional(pos).run(), vm);
 	po::notify(vm);    
 
-	if (vm.count("help") || vm.count("command") < 1) {
+	if (vm.count("help") || vm.count("archive") < 1) {
 		usage(desc);
 		return 0;
 	}
@@ -82,21 +78,17 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	bool stop = vm.count("stop") > 0;
-	bool check = vm.count("check") > 0;
+	bool list   = vm.count("list")   > 0;
+	bool check  = vm.count("check")  > 0;
+	bool xcheck = vm.count("xcheck") > 0;
+	bool stop   = vm.count("stop")   > 0;
 
-	std::string command = vm["command"].as<std::string>();
-	std::string archive = vm.count("archive") > 0 ? vm["archive"].as<std::string>() : std::string("-");
+	std::string directory = vm.count("directory") > 0 ? vm["directory"].as<std::string>() : std::string(".");
+	std::string archive   = vm.count("archive") > 0 ? vm["archive"].as<std::string>() : std::string("-");
 	std::vector<std::string> filter;
 	
 	if (vm.count("filter") > 0) {
 		filter = vm["filter"].as< std::vector<std::string> >();
-	}
-
-	if (command != "l" && command != "x" && command != "c") {
-		std::cerr << "*** error: unknown command: " << command << std::endl;
-		usage(desc);
-		return 1;
 	}
 
 	Vpk::ConsoleHandler handler(stop);
@@ -115,14 +107,17 @@ int main(int argc, char *argv[]) {
 			package.filter(filter);
 		}
 
-		if (command == "l") {
+		if (list) {
 			package.list();
 		}
-		else if (command == "x") {
-			package.extract(".", check);
+		else if (xcheck) {
+			package.extract(directory, true);
 		}
-		else if (command == "c") {
+		else if (check) {
 			package.check();
+		}
+		else {
+			package.extract(directory, false);
 		}
 	}
 	catch (const std::exception &exc) {

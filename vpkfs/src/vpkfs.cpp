@@ -78,7 +78,7 @@ void usage(const char *binary) {
 	std::cout << "Usage: " << binary << " [OPTIONS] ARCHIVE MOUNTPOINT\n"
 		"Mount VPK archives.\n"
 		"ARCHIVE has to be a file named \"*_dir.vpk\".\n"
-		"This filesystem is single threaded and only supports blocking operations.\n"
+		"This filesystem is read-only, single threaded and only supports blocking operations.\n"
 		"\n"
 		"Options:\n"
 		"    -o opt,[opt...]        mount options\n"
@@ -118,7 +118,7 @@ static int vpkfuse_opt_proc(struct vpkfuse_config *conf, const char *arg, int ke
 		break;
 
 	case KEY_VERSION:
-		std::cout << "vpkfuse version " << Vpk::VERSION << std::endl;
+		std::cout << "vpkfs version " << Vpk::VERSION << std::endl;
 		conf->flags |= VPK_OPTS_VERSION;
 		break;
 	}
@@ -134,15 +134,17 @@ Vpk::Vpkfs::Vpkfs(int argc, char *argv[], bool allocated)
 	struct vpkfuse_config conf(m_archive, m_mountpoint, m_flags);
 	m_args.parse(&conf, vpkfuse_opts, vpkfuse_opt_proc);
 	
-	if (conf.argind < 1) {
-		std::cerr << "*** error: required argument ARCHIVE is missing.\n";
-		usage(argv[0]);
-		m_flags |= VPK_OPTS_ERROR;
-	}
-	else if (conf.argind < 2) {
-		std::cerr << "*** error: required argument MOUNTPOINT is missing.\n";
-		usage(argv[0]);
-		m_flags |= VPK_OPTS_ERROR;
+	if (m_flags == VPK_OPTS_OK) {
+		if (conf.argind < 1) {
+			std::cerr << "*** error: required argument ARCHIVE is missing.\n";
+			usage(argv[0]);
+			m_flags |= VPK_OPTS_ERROR;
+		}
+		else if (conf.argind < 2) {
+			std::cerr << "*** error: required argument MOUNTPOINT is missing.\n";
+			usage(argv[0]);
+			m_flags |= VPK_OPTS_ERROR;
+		}
 	}
 
 	// force single threaded:
