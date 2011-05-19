@@ -1,5 +1,5 @@
 /**
- * vpkfuse - mount vpk archives
+ * vpkfs - mount vpk archives
  * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.0)
 
-project(vpkfuse)
+project(vpkfs)
 
 # what does this do? cmake told me to add these three lines:
 if(COMMAND cmake_policy)
@@ -15,16 +15,16 @@ find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
 
 include_directories("../libvpk/include" "include")
 
-add_executable(vpkfuse
+add_executable(vpkfs
 	src/main.cpp
 	src/fuse.cpp
 )
 
-install(TARGETS vpkfuse
+install(TARGETS vpkfs
 	RUNTIME DESTINATION bin
 )
 
-target_link_libraries(vpkfuse
+target_link_libraries(vpkfs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}

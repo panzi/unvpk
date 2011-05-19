@@ -4,4 +4,4 @@ project(vpk)
 
 add_subdirectory(libvpk)
 add_subdirectory(unvpk)
-add_subdirectory(vpkfuse)
+add_subdirectory(vpkfs)

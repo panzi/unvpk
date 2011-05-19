@@ -1,5 +1,5 @@
 /**
- * vpkfuse - mount vpk archives
+ * vpkfs - mount vpk archives
  * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
@@ -34,12 +34,31 @@
 #include <vpk/exception.h>
 #include <vpk/file.h>
 #include <vpk/fuse.h>
+#include <vpk/fuse_args.h>
 
 namespace fs = boost::filesystem;
 
+enum {
+	VPK_OPTS_OK      = 0,
+	VPK_OPTS_HELP    = 1,
+	VPK_OPTS_VERSION = 2,
+	VPK_OPTS_ERROR   = 4
+};
+
 struct vpkfuse_config {
-	char *archive;
-	bool  run;
+	vpkfuse_config(
+		std::string &archive,
+		std::string &mountpoint,
+		int &flags)
+	: archive(archive),
+	  mountpoint(mountpoint),
+	  argind(0),
+	  flags(flags) {}
+
+	std::string &archive;
+	std::string &mountpoint;
+	int argind;
+	int &flags;
 };
 
 enum {
@@ -47,63 +66,108 @@ enum {
 	KEY_VERSION
 };
 
-#define VPK_OPT(t, p, v) { t, offsetof(struct vpkfuse_config, p), v }
-
 static struct fuse_opt vpkfuse_opts[] = {
-	VPK_OPT("archive=%s", archive, 0),
-	
 	FUSE_OPT_KEY("-v",        KEY_VERSION),
 	FUSE_OPT_KEY("--version", KEY_VERSION),
 	FUSE_OPT_KEY("-h",        KEY_HELP),
 	FUSE_OPT_KEY("--help",    KEY_HELP),
+	FUSE_OPT_END
 };
 
-static int vpkfuse_opt_proc(void *data, const char *arg, int key, struct fuse_args *outargs) {
+void usage(const char *binary) {
+	std::cout << "Usage: " << binary << " [OPTIONS] ARCHIVE MOUNTPOINT\n"
+		"Mount VPK archives.\n"
+		"ARCHIVE has to be a file named \"*_dir.vpk\".\n"
+		"This filesystem is single threaded and only supports blocking operations.\n"
+		"\n"
+		"Options:\n"
+		"    -o opt,[opt...]        mount options\n"
+		"    -h   --help            print help\n"
+		"    -v   --version         print version\n"
+		"    -d   -o debug          enable debug output (implies -f)\n"
+		"    -f                     foreground operation\n"
+		"\n"
+		"(c) 2011 Mathias Panzenböck\n";
+}
+
+static int vpkfuse_opt_proc(struct vpkfuse_config *conf, const char *arg, int key, struct fuse_args *outargs) {
 	switch (key) {
+	case FUSE_OPT_KEY_NONOPT:
+		switch (conf->argind) {
+		case 0:
+			conf->archive = arg;
+			++ conf->argind;
+			return 0;
+
+		case 1:
+			conf->mountpoint = arg;
+			++ conf->argind;
+			break;
+
+		default:
+			std::cerr << "*** error: to many arguments\n";
+			usage(outargs->argv[0]);
+			conf->flags |= VPK_OPTS_ERROR;
+			++ conf->argind;
+		}
+		break;
+
 	case KEY_HELP:
-		std::cout << "Usage: " << outargs->argv[0] << " MOUNTPOINT [OPTIONS]\n"
-			"\n"
-			"General Options:\n"
-			"    -o opt,[opt...]     mount options\n"
-			"    -h   --help         print help\n"
-			"    -c   --version      print version\n"
-			"\n"
-			"VPK Options:\n"
-			"    -o archive=ARCHIVE  the VPK archive that shall be mounted\n";
-		((struct vpkfuse_config*) data)->run = false;
-		return 0;
+		usage(outargs->argv[0]);
+		conf->flags |= VPK_OPTS_HELP;
+		break;
 
 	case KEY_VERSION:
 		std::cout << "vpkfuse version " << Vpk::VERSION << std::endl;
-		((struct vpkfuse_config*) data)->run = false;
-     }
-     return 1;
+		conf->flags |= VPK_OPTS_VERSION;
+		break;
+	}
+	return 1;
 }
 
 Vpk::Fuse::Fuse(int argc, char *argv[], bool allocated)
-		: m_run(true),
+		: m_args(argc, argv, allocated),
+		  m_flags(VPK_OPTS_OK),
 		  m_handler(true),
 		  m_package(&this->m_handler),
 		  m_files(0) {
-	m_args.argc = argc;
-	m_args.argv = argv;
-	m_args.allocated = allocated;
-
-	struct vpkfuse_config conf = { NULL, true };
-
-	fuse_opt_parse(&m_args, &conf, vpkfuse_opts, vpkfuse_opt_proc);
+	struct vpkfuse_config conf(m_archive, m_mountpoint, m_flags);
+	m_args.parse(&conf, vpkfuse_opts, vpkfuse_opt_proc);
 	
-	// force single threaded:
-	fuse_opt_insert_arg(&m_args, 1, "-s");
+	if (conf.argind < 1) {
+		std::cerr << "*** error: required argument ARCHIVE is missing.\n";
+		usage(argv[0]);
+		m_flags |= VPK_OPTS_ERROR;
+	}
+	else if (conf.argind < 2) {
+		std::cerr << "*** error: required argument MOUNTPOINT is missing.\n";
+		usage(argv[0]);
+		m_flags |= VPK_OPTS_ERROR;
+	}
 
-	if (conf.archive) {
-		m_archive = fs::system_complete(conf.archive).string();
-		m_run     = conf.run;
+	// force single threaded:
+	m_args.insert_arg(1, "-s");
+}
+
+Vpk::Fuse::Fuse(
+	const std::string &archive,
+	const std::string &mountpoint,
+	const std::string &mountopts)
+		: m_flags(VPK_OPTS_OK),
+		  m_archive(archive),
+		  m_mountpoint(mountpoint),
+		  m_handler(true),
+		  m_package(&this->m_handler),
+		  m_files(0) {
+	m_args.add_arg("vpkfs");
+	// force single threaded:
+	m_args.add_arg("-s");
+	if (mountopts.size() > 0) {
+		m_args.add_arg("-o");
+		m_args.add_arg(mountopts);
 	}
-	else {
-		std::cerr << "*** error: required option 'archive' is missing.\n";
-		m_run = false;
-	}
+	m_args.add_arg("--");
+	m_args.add_arg(m_mountpoint);
 }
 
 static int vpk_getattr(const char *path, struct stat *stbuf) {
@@ -200,7 +264,8 @@ void Vpk::Fuse::statfs(const Node *node) {
 }
 
 int Vpk::Fuse::run() {
-	if (!m_run) return 0;
+	if (m_flags & VPK_OPTS_ERROR) return 1;
+	if (m_flags & (VPK_OPTS_HELP | VPK_OPTS_VERSION)) return 0;
 
 	m_handler.setRaise(true);
 	m_package.read(m_archive);
@@ -209,7 +274,7 @@ int Vpk::Fuse::run() {
 	m_files = 0;
 	statfs(&m_package);
 
-	return fuse_main(m_args.argc, m_args.argv, &vpkfuse_operations, this);
+	return fuse_main(m_args.argc(), m_args.argv(), &vpkfuse_operations, this);
 }
 
 // only minimal stat:

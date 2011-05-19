@@ -1,5 +1,5 @@
 /**
- * vpkfuse - mount vpk archives
+ * vpkfs - mount vpk archives
  * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
@@ -21,6 +21,7 @@
 
 #include <sys/statvfs.h>
 
+#include <vector>
 #include <fstream>
 
 #include <boost/unordered_map.hpp>
@@ -30,11 +31,16 @@
 
 #include <vpk/console_handler.h>
 #include <vpk/package.h>
+#include <vpk/fuse_args.h>
 
 namespace Vpk {
 	class Fuse {
 	public:
 		Fuse(int argc, char *argv[], bool allocated=false);
+		Fuse(
+			const std::string &archive,
+			const std::string &mountpoint,
+			const std::string &mountopts = "");
 
 		int run();
 		int getattr(const char *path, struct stat *stbuf);
@@ -47,6 +53,9 @@ namespace Vpk {
 		int statfs(const char *path, struct statvfs *stbuf);
 
 		boost::shared_ptr<boost::filesystem::ifstream> archive(uint16_t index);
+
+		const std::string &archive()    const { return m_archive; }
+		const std::string &mountpoint() const { return m_mountpoint; }
 	
 	private:
 		void statfs(const Node *node);
@@ -55,9 +64,10 @@ namespace Vpk {
 		typedef boost::unordered_map< std::string, uint64_t > Descrs;
 		typedef boost::unordered_map< uint16_t, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
 
-		struct fuse_args m_args;
-		bool             m_run;
+		FuseArgs         m_args;
+		int              m_flags;
 		std::string      m_archive;
+		std::string      m_mountpoint;
 		ConsoleHandler   m_handler;
 		Package          m_package;
 		Archives         m_archives;
