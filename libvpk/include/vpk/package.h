@@ -51,7 +51,8 @@ namespace Vpk {
 
 		boost::filesystem::path archivePath(uint16_t index) const;
 		const std::string &srcdir() const { return m_srcdir; }
-		Node *get(const std::string &path);
+		Node *get(const std::string &path) { return get(path.c_str()); }
+		Node *get(const char *path);
 		void setHandler(Handler *handler) { m_handler = handler; }
 		const Handler *handler() const { return m_handler; }
 

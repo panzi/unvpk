@@ -146,7 +146,44 @@ Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
 	return *dir;
 }
 
-Vpk::Node *Vpk::Package::get(const std::string &path) {
+Vpk::Node *Vpk::Package::get(const char *path) {
+	if (!*path) return 0;
+	
+	Node  *node = this;
+	Nodes *nodes = &this->nodes();
+	const char *ptr = path;
+	while (*ptr == '/') ++ ptr;
+	while (*ptr) {
+		const char *slash = strchr(ptr, '/');
+		if (!slash) {
+			Nodes::iterator i = nodes->find(ptr);
+			if (i == nodes->end()) {
+				return 0;
+			}
+			return i->second.get();
+		}
+		else {
+			Nodes::iterator i = nodes->find(std::string(ptr, slash - ptr));
+			if (i == nodes->end()) {
+				return 0;
+			}
+			node = i->second.get();
+			ptr = slash + 1;
+
+			while (*ptr == '/') ++ ptr;
+
+			if (*ptr) {
+				if (node->type() != Node::DIR) {
+					return 0;
+				}
+				nodes = &((Dir*) node)->nodes();
+			}
+		}
+	}
+
+	return node;
+
+/*
 	if (path == "/") return this;
 
 	std::vector<std::string> pathvec;
@@ -179,6 +216,7 @@ Vpk::Node *Vpk::Package::get(const std::string &path) {
 	}
 
 	return node;
+	*/
 }
 
 static size_t filecount(const Vpk::Nodes &nodes) {
