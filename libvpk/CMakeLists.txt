@@ -8,7 +8,7 @@ include_directories("include")
 
 add_library(libvpk
 	src/version.cpp
-	src/file_reader.cpp
+	src/file_io.cpp
 	src/dir.cpp
 	src/file.cpp
 	src/package.cpp

@@ -16,19 +16,19 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_FILE_READER_CLOSED_ERROR_H
-#define VPK_FILE_READER_CLOSED_ERROR_H
+#ifndef VPK_FILE_IO_CLOSED_ERROR_H
+#define VPK_FILE_IO_CLOSED_ERROR_H
 
 #include <string.h>
 
 #include <vpk/exception.h>
 
 namespace Vpk {
-	class FileReaderClosedError : public Exception {
+	class FileIOClosedError : public Exception {
 	public:
-		FileReaderClosedError() : Exception("File reader is closed.") {}
-		FileReaderClosedError(const char *msg) : Exception(msg) {}
-		FileReaderClosedError(const std::string &msg) : Exception(msg) {}
+		FileIOClosedError() : Exception("File reader is closed.") {}
+		FileIOClosedError(const char *msg) : Exception(msg) {}
+		FileIOClosedError(const std::string &msg) : Exception(msg) {}
 	};
 }
 

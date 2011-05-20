@@ -20,9 +20,9 @@
 #define VPK_FILE_DATA_HANDLER_H
 
 #include <boost/crc.hpp>
-#include <boost/filesystem/fstream.hpp>
 
 #include <vpk/checking_data_handler.h>
+#include <vpk/file_io.h>
 
 namespace Vpk {
 	class FileDataHandler : public CheckingDataHandler {
@@ -33,19 +33,19 @@ namespace Vpk {
 
 		void process(const char *buffer, size_t length) {
 			if (m_check) super_type::process(buffer, length);
-			m_os.write(buffer, length);
+			m_io.write(buffer, length);
 		}
 
 		void finish() {
-			m_os.close();
+			m_io.close();
 			if (m_check) super_type::finish();
 		}
 
 		bool check() const { return m_check; }
 	
 	private:
-		bool                        m_check;
-		boost::filesystem::ofstream m_os;
+		bool   m_check;
+		FileIO m_io;
 	};
 }
 

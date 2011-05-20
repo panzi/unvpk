@@ -17,15 +17,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <vpk/file_reader.h>
-#include <vpk/file_reader_closed_error.h>
+#include <vpk/file_io.h>
+#include <vpk/file_io_closed_error.h>
 #include <vpk/io_error.h>
 
 #include <endian.h>
 #include <errno.h>
 #include <unistd.h>
 
-Vpk::FileReader &Vpk::FileReader::operator = (const FileReader &reader) {
+Vpk::FileIO &Vpk::FileIO::operator = (const FileIO &reader) {
 	close();
 	if (reader.m_stream) {
 		int fd = dup(::fileno(reader.m_stream));
@@ -37,49 +37,49 @@ Vpk::FileReader &Vpk::FileReader::operator = (const FileReader &reader) {
 	return *this;
 }
 
-void Vpk::FileReader::clearerr() {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::clearerr() {
+	if (!m_stream) throw FileIOClosedError();
 	::clearerr(m_stream);
 }
 
-bool Vpk::FileReader::error() {
-	if (!m_stream) throw FileReaderClosedError();
+bool Vpk::FileIO::error() {
+	if (!m_stream) throw FileIOClosedError();
 	return ferror(m_stream) != 0;
 }
 
-bool Vpk::FileReader::eof() {
-	if (!m_stream) throw FileReaderClosedError();
+bool Vpk::FileIO::eof() {
+	if (!m_stream) throw FileIOClosedError();
 	return feof(m_stream) != 0;
 }
 
-void Vpk::FileReader::open(int fd) {
+void Vpk::FileIO::open(int fd, const char *mode) {
 #if _POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE
 	if (m_stream) close();
-	m_stream = fdopen(fd, "rb");
+	m_stream = fdopen(fd, mode);
 	if (!m_stream) throw IOError(errno);
 #else
 	throw IOError(ENOSYS);
 #endif
 }
 
-void Vpk::FileReader::open(const char *filename) {
+void Vpk::FileIO::open(const char *filename, const char *mode) {
 	if (m_stream) {
-		m_stream = freopen(filename, "rb", m_stream);
+		m_stream = freopen(filename, mode, m_stream);
 	}
 	else {
-		m_stream = fopen(filename, "rb");
+		m_stream = fopen(filename, mode);
 	}
 	if (!m_stream) throw IOError(errno);
 }
 
-void Vpk::FileReader::setnobuf() {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::setnobuf() {
+	if (!m_stream) throw FileIOClosedError();
 	if (setvbuf(m_stream, NULL, _IONBF, 0) != 0) {
 		throw IOError(errno);
 	}
 }
 
-int Vpk::FileReader::fileno() {
+int Vpk::FileIO::fileno() {
 #if _POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE
 	return m_stream == 0 ? -1 : ::fileno(m_stream);
 #else
@@ -88,12 +88,12 @@ int Vpk::FileReader::fileno() {
 #endif
 }
 
-void Vpk::FileReader::rewind() {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::rewind() {
+	if (!m_stream) throw FileIOClosedError();
 	::rewind(m_stream);
 }
 
-void Vpk::FileReader::close() {
+void Vpk::FileIO::close() {
 	if (m_stream) {
 		int code = fclose(m_stream);
 		m_stream = 0;
@@ -103,15 +103,15 @@ void Vpk::FileReader::close() {
 	}
 }
 
-void Vpk::FileReader::seek(long offset, Whence whence) {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::seek(long offset, Whence whence) {
+	if (!m_stream) throw FileIOClosedError();
 	if (fseek(m_stream, offset, whence) != 0) {
 		throw IOError(errno);
 	}
 }
 
-long Vpk::FileReader::tell() {
-	if (!m_stream) throw FileReaderClosedError();
+long Vpk::FileIO::tell() {
+	if (!m_stream) throw FileIOClosedError();
 	long pos = ftell(m_stream);
 	if (pos == -1L) {
 		throw IOError(errno);
@@ -119,8 +119,15 @@ long Vpk::FileReader::tell() {
 	return pos;
 }
 
-int Vpk::FileReader::get() {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::put(int ch) {
+	if (!m_stream) throw FileIOClosedError();
+	if (fputc(ch, m_stream) == EOF) {
+		throw IOError(errno);
+	}
+}
+
+int Vpk::FileIO::get() {
+	if (!m_stream) throw FileIOClosedError();
 	int ch = fgetc(m_stream);
 	if (ch == EOF && ferror(m_stream)) {
 		throw IOError(errno);
@@ -128,8 +135,45 @@ int Vpk::FileReader::get() {
 	return ch;
 }
 
-size_t Vpk::FileReader::readSome(char *buf, size_t size) {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::write(const char *buf, size_t size) {
+	if (!m_stream) throw FileIOClosedError();
+	if (fwrite(buf, size, 1, m_stream) < 1) {
+		throw IOError(errno);
+	}
+}
+
+void Vpk::FileIO::writeLU16(uint16_t value) {
+	value = htole16(value);
+	write((const char*) &value, sizeof(value));
+}
+
+void Vpk::FileIO::writeLU32(uint32_t value) {
+	value = htole32(value);
+	write((const char*) &value, sizeof(value));
+}
+
+void Vpk::FileIO::writeLU64(uint64_t value) {
+	value = htole64(value);
+	write((const char*) &value, sizeof(value));
+}
+
+void Vpk::FileIO::writeBU16(uint16_t value) {
+	value = htobe16(value);
+	write((const char*) &value, sizeof(value));
+}
+
+void Vpk::FileIO::writeBU32(uint32_t value) {
+	value = htobe32(value);
+	write((const char*) &value, sizeof(value));
+}
+
+void Vpk::FileIO::writeBU64(uint64_t value) {
+	value = htobe64(value);
+	write((const char*) &value, sizeof(value));
+}
+
+size_t Vpk::FileIO::readSome(char *buf, size_t size) {
+	if (!m_stream) throw FileIOClosedError();
 	size_t count = fread(buf, 1, size, m_stream);
 	if (count < size && ferror(m_stream)) {
 		throw IOError(errno);
@@ -137,8 +181,8 @@ size_t Vpk::FileReader::readSome(char *buf, size_t size) {
 	return count;
 }
 
-void Vpk::FileReader::read(char *buf, size_t size) {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::read(char *buf, size_t size) {
+	if (!m_stream) throw FileIOClosedError();
 	size_t count = fread(buf, size, 1, m_stream);
 	if (count < 1) {
 		if (ferror(m_stream)) {
@@ -150,92 +194,92 @@ void Vpk::FileReader::read(char *buf, size_t size) {
 	}
 }
 
-uint8_t Vpk::FileReader::readU8() {
+uint8_t Vpk::FileIO::readU8() {
 	uint8_t value = 0;
 	read((char*) &value, 1);
 	return value;
 }
 
-int8_t Vpk::FileReader::readS8() {
+int8_t Vpk::FileIO::readS8() {
 	int8_t value = 0;
 	read((char*) &value, 1);
 	return value;
 }
 
-uint16_t Vpk::FileReader::readLU16() {
+uint16_t Vpk::FileIO::readLU16() {
 	uint16_t value = 0;
 	read((char*) &value, 2);
 	return le16toh(value);
 }
 
-int16_t Vpk::FileReader::readLS16() {
+int16_t Vpk::FileIO::readLS16() {
 	uint16_t value = 0;
 	read((char*) &value, 2);
 	return (int16_t) le16toh(value);
 }
 
-uint32_t Vpk::FileReader::readLU32() {
+uint32_t Vpk::FileIO::readLU32() {
 	uint32_t value = 0;
 	read((char*) &value, 4);
 	return le32toh(value);
 }
 
-int32_t Vpk::FileReader::readLS32() {
+int32_t Vpk::FileIO::readLS32() {
 	uint32_t value = 0;
 	read((char*) &value, 4);
 	return (int32_t) le32toh(value);
 }
 
-uint64_t Vpk::FileReader::readLU64() {
+uint64_t Vpk::FileIO::readLU64() {
 	uint64_t value = 0;
 	read((char*) &value, 8);
 	return le64toh(value);
 }
 
-int64_t Vpk::FileReader::readLS64() {
+int64_t Vpk::FileIO::readLS64() {
 	uint64_t value = 0;
 	read((char*) &value, 8);
 	return (int64_t) le64toh(value);
 }
 
-uint16_t Vpk::FileReader::readBU16() {
+uint16_t Vpk::FileIO::readBU16() {
 	uint16_t value = 0;
 	read((char*) &value, 2);
 	return be16toh(value);
 }
 
-int16_t Vpk::FileReader::readBS16() {
+int16_t Vpk::FileIO::readBS16() {
 	uint16_t value = 0;
 	read((char*) &value, 2);
 	return (int16_t) be16toh(value);
 }
 
-uint32_t Vpk::FileReader::readBU32() {
+uint32_t Vpk::FileIO::readBU32() {
 	uint32_t value = 0;
 	read((char*) &value, 4);
 	return be32toh(value);
 }
 
-int32_t Vpk::FileReader::readBS32() {
+int32_t Vpk::FileIO::readBS32() {
 	uint32_t value = 0;
 	read((char*) &value, 4);
 	return (int32_t) be32toh(value);
 }
 
-uint64_t Vpk::FileReader::readBU64() {
+uint64_t Vpk::FileIO::readBU64() {
 	uint64_t value = 0;
 	read((char*) &value, 8);
 	return be64toh(value);
 }
 
-int64_t Vpk::FileReader::readBS64() {
+int64_t Vpk::FileIO::readBS64() {
 	uint64_t value = 0;
 	read((char*) &value, 8);
 	return (int64_t) be64toh(value);
 }
 
-void Vpk::FileReader::readAsciiZ(std::string &s) {
-	if (!m_stream) throw FileReaderClosedError();
+void Vpk::FileIO::readAsciiZ(std::string &s) {
+	if (!m_stream) throw FileIOClosedError();
 	for (;;) {
 		int ch = fgetc(m_stream);
 		if (ch == 0) return;

@@ -33,6 +33,5 @@ Vpk::FileDataHandler::FileDataHandler(
 : CheckingDataHandler(path.string(), crc32), m_check(check) {
 	create_path(path.parent_path());
 
-	m_os.exceptions(std::ios::failbit | std::ios::badbit);
-	m_os.open(path, std::ios::out | std::ios::binary);
+	m_io.open(path, "wb");
 }

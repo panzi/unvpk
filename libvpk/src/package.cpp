@@ -67,23 +67,23 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 	}
 	m_srcdir = fs::system_complete(path).parent_path().string();
 	
-	FileReader reader(path);
-	read(reader);
+	FileIO io(path, "rb");
+	read(io);
 }
 
-void Vpk::Package::read(const std::string &srcdir, const std::string &name, FileReader &reader) {
+void Vpk::Package::read(const std::string &srcdir, const std::string &name, FileIO &io) {
 	m_srcdir = fs::system_complete(srcdir).string();
 	setName(name);
-	read(reader);
+	read(io);
 }
 
-void Vpk::Package::read(FileReader &reader) {
-	if (reader.readLU32() != 0x55AA1234) {
-		reader.seek(-4, CUR);
+void Vpk::Package::read(FileIO &io) {
+	if (io.readLU32() != 0x55AA1234) {
+		io.seek(-4, CUR);
 	}
 	else {
-		unsigned int version   = reader.readLU32();
-		unsigned int indexSize = reader.readLU32();
+		unsigned int version   = io.readLU32();
+		unsigned int indexSize = io.readLU32();
 
 		if (version != 1) {
 			throw FileFormatError((boost::format("unexpected vpk version %d") % version).str());
@@ -93,16 +93,16 @@ void Vpk::Package::read(FileReader &reader) {
 	// types
 	for (;;) {
 		std::string type;
-		reader.readAsciiZ(type);
+		io.readAsciiZ(type);
 		if (type.empty()) break;
 		
 		// dirs
 		for (;;) {
 			std::string path;
-			reader.readAsciiZ(path);
+			io.readAsciiZ(path);
 			if (path.empty()) break;
 
-			mkpath(path).read(reader, type);
+			mkpath(path).read(io, type);
 		}
 	}
 }
@@ -325,7 +325,7 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 			}
 			else {
-				boost::shared_ptr<FileReader> archive;
+				boost::shared_ptr<FileIO> archive;
 				
 				Archives::iterator i = archives.find(file->index);
 				if (i != archives.end()) {
@@ -342,10 +342,10 @@ void Vpk::Package::process(const Nodes &nodes,
 							throw exc;
 						}
 
-						archives[file->index] = boost::shared_ptr<FileReader>();
+						archives[file->index] = boost::shared_ptr<FileIO>();
 						continue;
 					}
-					archive.reset(new FileReader(archivePath));
+					archive.reset(new FileIO(archivePath));
 					archives[file->index] = archive;
 				}
 

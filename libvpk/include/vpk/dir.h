@@ -22,7 +22,7 @@
 #include <string>
 
 #include <vpk/node.h>
-#include <vpk/file_reader.h>
+#include <vpk/file_io.h>
 
 namespace Vpk {
 	class Dir : public Node {
@@ -30,7 +30,7 @@ namespace Vpk {
 		Dir(const std::string &name) : Node(name) {}
 
 		Type type() const { return Node::DIR; }
-		void read(FileReader &reader, const std::string &type);
+		void read(FileIO &io, const std::string &type);
 
 		const Nodes &nodes() const { return m_nodes; }
 		      Nodes &nodes()       { return m_nodes; }

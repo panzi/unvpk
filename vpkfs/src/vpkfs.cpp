@@ -28,7 +28,6 @@
 #include <limits>
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
 
 #include <vpk/version.h>
 #include <vpk/exception.h>

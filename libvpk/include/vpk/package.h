@@ -31,7 +31,7 @@
 #include <vpk/dir.h>
 #include <vpk/handler.h>
 #include <vpk/data_handler_factory.h>
-#include <vpk/file_reader.h>
+#include <vpk/file_io.h>
 
 namespace Vpk {
 	class File;
@@ -44,7 +44,7 @@ namespace Vpk {
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
 		void read(const boost::filesystem::path &path);
-		void read(const std::string &srcdir, const std::string &name, FileReader &reader);
+		void read(const std::string &srcdir, const std::string &name, FileIO &io);
 
 		Dir &mkpath(const std::string &path);
 		Dir &mkpath(const std::vector<std::string> &path);
@@ -66,12 +66,12 @@ namespace Vpk {
 
 		size_t filecount() const;
 
-		typedef boost::unordered_map< uint16_t, boost::shared_ptr<FileReader> > Archives;
+		typedef boost::unordered_map< uint16_t, boost::shared_ptr<FileIO> > Archives;
 
 	private:
 		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
 
-		void read(FileReader &reader);
+		void read(FileIO &io);
 		void filter(Nodes &nodes, const std::set<Node*> &keep);
 		void process(const Nodes &nodes, const std::vector<std::string> &prefix, Archives &archives, DataHandlerFactory &factory) const;
 

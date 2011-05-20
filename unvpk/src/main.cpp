@@ -95,8 +95,8 @@ int main(int argc, char *argv[]) {
 
 	try {
 		if (archive == "-") {
-			Vpk::FileReader reader(stdin);
-			package.read(".", "", reader);
+			Vpk::FileIO io(stdin);
+			package.read(".", "", io);
 		}
 		else {
 			package.read(archive);

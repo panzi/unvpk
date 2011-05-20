@@ -25,7 +25,7 @@
 #include <vector>
 
 #include <vpk/node.h>
-#include <vpk/file_reader.h>
+#include <vpk/file_io.h>
 
 namespace Vpk {
 	class File : public Node {
@@ -43,7 +43,7 @@ namespace Vpk {
 			data() {}
 
 		Type type() const { return Node::FILE; }
-		void read(FileReader &reader);
+		void read(FileIO &io);
 
 		uint32_t crc32;
 		uint32_t size;

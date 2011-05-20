@@ -21,20 +21,20 @@
 #include <vpk/file.h>
 #include <vpk/file_format_error.h>
 
-void Vpk::File::read(FileReader &reader) {
-	crc32 = reader.readLU32();
-	unsigned int length = reader.readLU16();
-	index = reader.readLU16();
-	offset = reader.readLU32();
-	size = reader.readLU32();
+void Vpk::File::read(FileIO &io) {
+	crc32 = io.readLU32();
+	unsigned int length = io.readLU16();
+	index = io.readLU16();
+	offset = io.readLU32();
+	size = io.readLU32();
 
-	unsigned int terminator = reader.readLU16();
+	unsigned int terminator = io.readLU16();
 	if (terminator != 0xFFFF) {
 		throw FileFormatError("invalid terminator");
 	}
 
 	if (length > 0) {
 		data.resize(length, 0);
-		reader.read(&data[0], length);
+		io.read(&data[0], length);
 	}
 }

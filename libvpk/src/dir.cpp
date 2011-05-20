@@ -19,17 +19,17 @@
 #include <vpk/dir.h>
 #include <vpk/file.h>
 
-void Vpk::Dir::read(FileReader &reader, const std::string &type) {
+void Vpk::Dir::read(FileIO &io, const std::string &type) {
 	// files
 	for (;;) {
 		std::string name;
-		reader.readAsciiZ(name);
+		io.readAsciiZ(name);
 		if (name.empty()) break;
 
 		name += ".";
 		name += type;
 		File *file = new File(name);
 		m_nodes[name] = NodePtr(file);
-		file->read(reader);
+		file->read(io);
 	}
 }
