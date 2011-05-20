@@ -284,7 +284,10 @@ void Vpk::Package::filter(const std::vector<std::string> &paths) {
 	std::set<Node*> keep;
 	for (std::vector<std::string>::const_iterator i = paths.begin(); i != paths.end(); ++ i) {
 		Node *node = get(*i);
-		if (node) {
+		if (node == this) {
+			return;
+		}
+		else if (node) {
 			keep.insert(node);
 		}
 		else {
