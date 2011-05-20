@@ -19,10 +19,10 @@
 #ifndef VPK_DIR_H
 #define VPK_DIR_H
 
-#include <iostream>
 #include <string>
 
 #include <vpk/node.h>
+#include <vpk/file_reader.h>
 
 namespace Vpk {
 	class Dir : public Node {
@@ -30,7 +30,7 @@ namespace Vpk {
 		Dir(const std::string &name) : Node(name) {}
 
 		Type type() const { return Node::DIR; }
-		void read(std::istream &is, const std::string &type);
+		void read(FileReader &reader, const std::string &type);
 
 		const Nodes &nodes() const { return m_nodes; }
 		      Nodes &nodes()       { return m_nodes; }

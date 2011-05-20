@@ -16,21 +16,20 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <vpk/io.h>
 #include <vpk/dir.h>
 #include <vpk/file.h>
 
-void Vpk::Dir::read(std::istream &is, const std::string &type) {
+void Vpk::Dir::read(FileReader &reader, const std::string &type) {
 	// files
-	while (is.good()) {
+	for (;;) {
 		std::string name;
-		readAsciiZ(is, name);
+		reader.readAsciiZ(name);
 		if (name.empty()) break;
 
 		name += ".";
 		name += type;
 		File *file = new File(name);
 		m_nodes[name] = NodePtr(file);
-		file->read(is);
+		file->read(reader);
 	}
 }

@@ -21,11 +21,11 @@
 
 #include <stdint.h>
 
-#include <iostream>
 #include <string>
 #include <vector>
 
 #include <vpk/node.h>
+#include <vpk/file_reader.h>
 
 namespace Vpk {
 	class File : public Node {
@@ -43,7 +43,7 @@ namespace Vpk {
 			data() {}
 
 		Type type() const { return Node::FILE; }
-		void read(std::istream &is);
+		void read(FileReader &reader);
 
 		uint32_t crc32;
 		uint32_t size;

@@ -25,9 +25,7 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
 
-#include <vpk/io.h>
 #include <vpk/dir.h>
 #include <vpk/file.h>
 #include <vpk/package.h>
@@ -68,26 +66,24 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 		setName(filename.substr(0, filename.size()-8));
 	}
 	m_srcdir = fs::system_complete(path).parent_path().string();
-
-	fs::ifstream is;
-	is.exceptions(std::ios::failbit | std::ios::badbit);
-	is.open(path, std::ios::in | std::ios::binary);
-	read(is);
+	
+	FileReader reader(path);
+	read(reader);
 }
 
-void Vpk::Package::read(const std::string &srcdir, const std::string &name, std::istream &is) {
+void Vpk::Package::read(const std::string &srcdir, const std::string &name, FileReader &reader) {
 	m_srcdir = fs::system_complete(srcdir).string();
 	setName(name);
-	read(is);
+	read(reader);
 }
 
-void Vpk::Package::read(std::istream &is) {
-	if (readLU32(is) != 0x55AA1234) {
-		is.seekg(-4, std::ios_base::cur);
+void Vpk::Package::read(FileReader &reader) {
+	if (reader.readLU32() != 0x55AA1234) {
+		reader.seek(-4, CUR);
 	}
 	else {
-		unsigned int version   = readLU32(is);
-		unsigned int indexSize = readLU32(is);
+		unsigned int version   = reader.readLU32();
+		unsigned int indexSize = reader.readLU32();
 
 		if (version != 1) {
 			throw FileFormatError((boost::format("unexpected vpk version %d") % version).str());
@@ -95,18 +91,18 @@ void Vpk::Package::read(std::istream &is) {
 	}
 
 	// types
-	while (is.good()) {
+	for (;;) {
 		std::string type;
-		readAsciiZ(is, type);
+		reader.readAsciiZ(type);
 		if (type.empty()) break;
 		
 		// dirs
-		while (is.good()) {
+		for (;;) {
 			std::string path;
-			readAsciiZ(is, path);
+			reader.readAsciiZ(path);
 			if (path.empty()) break;
 
-			mkpath(path).read(is, type);
+			mkpath(path).read(reader, type);
 		}
 	}
 }
@@ -329,7 +325,7 @@ void Vpk::Package::process(const Nodes &nodes,
 				}
 			}
 			else {
-				boost::shared_ptr<fs::ifstream> archive;
+				boost::shared_ptr<FileReader> archive;
 				
 				Archives::iterator i = archives.find(file->index);
 				if (i != archives.end()) {
@@ -346,16 +342,14 @@ void Vpk::Package::process(const Nodes &nodes,
 							throw exc;
 						}
 
-						archives[file->index] = boost::shared_ptr<fs::ifstream>();
+						archives[file->index] = boost::shared_ptr<FileReader>();
 						continue;
 					}
-					archive.reset(new fs::ifstream);
-					archive->exceptions(std::ios::failbit | std::ios::badbit);
-					archive->open(archivePath, std::ios::in | std::ios::binary);
+					archive.reset(new FileReader(archivePath));
 					archives[file->index] = archive;
 				}
 
-				archive->seekg(file->offset);
+				archive->seek(file->offset);
 				char data[BUFSIZ];
 				size_t left = file->size;
 				bool fail = false;

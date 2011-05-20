@@ -21,7 +21,6 @@
 #include <exception>
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/fstream.hpp>
 #include <boost/program_options.hpp>
 
 #include <vpk.h>
@@ -96,8 +95,8 @@ int main(int argc, char *argv[]) {
 
 	try {
 		if (archive == "-") {
-			std::cin.exceptions(std::ios::failbit | std::ios::badbit);
-			package.read(".", "", std::cin);
+			Vpk::FileReader reader(stdin);
+			package.read(".", "", reader);
 		}
 		else {
 			package.read(archive);

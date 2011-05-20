@@ -19,10 +19,10 @@
 #ifndef VPK_FUSE_H
 #define VPK_FUSE_H
 
+#include <stdio.h>
 #include <sys/statvfs.h>
 
 #include <vector>
-#include <fstream>
 
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
@@ -41,6 +41,7 @@ namespace Vpk {
 			const std::string &archive,
 			const std::string &mountpoint,
 			const std::string &mountopts = "");
+		Vpkfs() { clear(); }
 
 		int run();
 		int getattr(const char *path, struct stat *stbuf);
@@ -52,17 +53,20 @@ namespace Vpk {
 		int release(const char *path, struct fuse_file_info *fi);
 		int statfs(const char *path, struct statvfs *stbuf);
 
-		boost::shared_ptr<boost::filesystem::ifstream> archive(uint16_t index);
+		FILE *archive(uint16_t index, int *errnum = 0);
 
 		const std::string &archive()    const { return m_archive; }
 		const std::string &mountpoint() const { return m_mountpoint; }
+
+		void clear();
 	
 	private:
+		void close(uint16_t index, FILE *stream);
 		void statfs(const Node *node);
 
 		typedef boost::unordered_map< uint64_t, std::pair<std::string, File*> > Filemap;
 		typedef boost::unordered_map< std::string, uint64_t > Descrs;
-		typedef boost::unordered_map< uint16_t, boost::shared_ptr<boost::filesystem::ifstream> > Archives;
+		typedef boost::unordered_map< uint16_t, FILE* > Archives;
 
 		FuseArgs         m_args;
 		int              m_flags;

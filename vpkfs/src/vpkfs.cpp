@@ -390,7 +390,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-boost::shared_ptr<boost::filesystem::ifstream> Vpk::Vpkfs::archive(uint16_t index) {
+FILE *Vpk::Vpkfs::archive(uint16_t index, int *errnum) {
 	Archives::iterator i = m_archives.find(index);
 	if (i != m_archives.end()) {
 		return i->second;
@@ -398,12 +398,17 @@ boost::shared_ptr<boost::filesystem::ifstream> Vpk::Vpkfs::archive(uint16_t inde
 	else {
 		fs::path archivePath(m_package.archivePath(index));
 
-		if (!fs::exists(archivePath)) {
-			std::cerr << "*** archive does not exist: " << archivePath << std::endl;
-			return boost::shared_ptr<boost::filesystem::ifstream>();
+		FILE *archive = fopen(archivePath.string().c_str(), "rb");
+		if (!archive) {
+			int code = errno;
+			if (errnum) *errnum = code;
+			std::cerr
+				<< "*** error opening archive \""
+				<< archivePath << "\": " << strerror(code)
+				<< std::endl;
+			return 0;
 		}
-		boost::shared_ptr<boost::filesystem::ifstream> archive(
-			new fs::ifstream(archivePath, std::ios::in | std::ios::binary));
+
 		return m_archives[index] = archive;
 	}
 }
@@ -422,19 +427,24 @@ int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
 		if (offset >= file->size) {
 			return 0;
 		}
-		boost::shared_ptr<fs::ifstream> archive = this->archive(file->index);
+		int errnum = 0;
+		FILE *archive = this->archive(file->index, &errnum);
 
 		if (!archive)
-			return 0;
+			return -errnum;
 
 		size_t n = std::min(size, (size_t)(file->size - offset));
-		archive->seekg(file->offset + offset);
-		archive->read(buf, n);
-		n = archive->gcount();
+		if (fseek(archive, file->offset + offset, SEEK_SET) != 0) {
+			return -errno;
+		}
 
-		if (archive->bad()) {
-			archive->close();
-			m_archives.erase(file->index);
+		if (fread(buf, 1, n, archive) < n) {
+			if (ferror(archive)) {
+				errnum = errno;
+				close(file->index, archive);
+				m_archives.erase(file->index);
+				return -errnum;
+			}
 		}
 		
 		return n;
@@ -492,4 +502,21 @@ int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
 	stbuf->f_blocks = (fssize + stbuf->f_bsize - 1) / stbuf->f_bsize;
 
 	return 0;
+}
+
+void Vpk::Vpkfs::close(uint16_t index, FILE *stream) {
+	if (fclose(stream) != 0) {
+		int errnum = errno;
+		std::cerr
+			<< "*** error closing archive \""
+			<< m_package.archivePath(index) << "\": "
+			<< strerror(errnum) << std::endl;
+	}
+}
+
+void Vpk::Vpkfs::clear() {
+	for (Archives::iterator i = m_archives.begin(); i != m_archives.end(); ++ i) {
+		close(i->first, i->second);
+	}
+	m_archives.clear();
 }

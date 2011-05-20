@@ -16,30 +16,20 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_IO_H
-#define VPK_IO_H
+#ifndef VPK_FILE_READER_CLOSED_ERROR_H
+#define VPK_FILE_READER_CLOSED_ERROR_H
 
-#include <stdint.h>
-#include <iostream>
-#include <string>
+#include <string.h>
+
+#include <vpk/exception.h>
 
 namespace Vpk {
-	uint8_t  readU8(  std::istream &is);
-	int8_t   readS8(  std::istream &is);
-	uint16_t readLU16(std::istream &is);
-	int16_t  readLS16(std::istream &is);
-	uint32_t readLU32(std::istream &is);
-	int32_t  readLS32(std::istream &is);
-	uint64_t readLU64(std::istream &is);
-	int64_t  readLS64(std::istream &is);
-	uint16_t readBU16(std::istream &is);
-	int16_t  readBS16(std::istream &is);
-	uint32_t readBU32(std::istream &is);
-	int32_t  readBS32(std::istream &is);
-	uint64_t readBU64(std::istream &is);
-	int64_t  readBS64(std::istream &is);
-
-	void readAsciiZ(std::istream &is, std::string &s);
+	class FileReaderClosedError : public Exception {
+	public:
+		FileReaderClosedError() : Exception("File reader is closed.") {}
+		FileReaderClosedError(const char *msg) : Exception(msg) {}
+		FileReaderClosedError(const std::string &msg) : Exception(msg) {}
+	};
 }
 
 #endif

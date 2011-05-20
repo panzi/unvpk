@@ -16,25 +16,26 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <algorithm>
+#ifndef VPK_IO_ERROR_H
+#define VPK_IO_ERROR_H
 
-#include <vpk/file.h>
-#include <vpk/file_format_error.h>
+#include <string.h>
 
-void Vpk::File::read(FileReader &reader) {
-	crc32 = reader.readLU32();
-	unsigned int length = reader.readLU16();
-	index = reader.readLU16();
-	offset = reader.readLU32();
-	size = reader.readLU32();
+#include <vpk/exception.h>
 
-	unsigned int terminator = reader.readLU16();
-	if (terminator != 0xFFFF) {
-		throw FileFormatError("invalid terminator");
-	}
+namespace Vpk {
+	class IOError : public Exception {
+	public:
+		IOError(int errnum) : Exception(errnum == EOF ?
+			"Unexpected end of file" : strerror(errnum)), m_errnum(errnum) {}
+		IOError(const char *msg, int errnum) : Exception(msg), m_errnum(errnum) {}
+		IOError(const std::string &msg, int errnum) : Exception(msg), m_errnum(errnum) {}
+	
+		int errnum() const { return m_errnum; }
 
-	if (length > 0) {
-		data.resize(length, 0);
-		reader.read(&data[0], length);
-	}
+	private:
+		int m_errnum;
+	};
 }
+
+#endif

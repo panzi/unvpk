@@ -8,9 +8,9 @@ include_directories("include")
 
 add_library(libvpk
 	src/version.cpp
+	src/file_reader.cpp
 	src/dir.cpp
 	src/file.cpp
-	src/io.cpp
 	src/package.cpp
 	src/console_handler.cpp
 	src/checking_data_handler.cpp
