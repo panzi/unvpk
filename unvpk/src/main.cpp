@@ -125,14 +125,14 @@ static void list(const Vpk::Package &package, bool humanreadable) {
 		list(package.nodes(), std::vector<std::string>(), table, bytes, files, dirs, sumsize);
 	}
 	table.print(std::cout);
-	std::cout << files << " files (";
+	std::cout << files << " "<< (files == 1 ? "file" : "files") << " (";
 	if (humanreadable) {
 		std::cout << humanReadableSize(sumsize);
 	}
 	else {
 		std::cout << sumsize;
 	}
-	std::cout << " total size), " << dirs << " directories\n";
+	std::cout << " total size), " << dirs << " " << (dirs == 1 ? "directory" : "directories") << "\n";
 }
 
 int main(int argc, char *argv[]) {
