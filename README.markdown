@@ -18,13 +18,14 @@ archives. Such archives are used in Source engine based games like Portal 2.
 	If one or more FILEs are given only these are listed/checked/extracted.
 	
 	Options:
-	  -h [ --help ]          print help message
-	  -v [ --version ]       print version information
-	  -l [ --list ]          list archive contents
-	  -c [ --check ]         check CRC32 sums
-	  -x [ --xcheck ]        extract and check CRC32 sums
-	  -C [ --directory ] arg extract files into another directory
-	  -s [ --stop ]          stop on error
+	  -H [ --help ]            print help message
+	  -v [ --version ]         print version information
+	  -l [ --list ]            list archive contents
+	  -h [ --human-readable ]  use human readable file sizes in listing
+	  -c [ --check ]           check CRC32 sums
+	  -x [ --xcheck ]          extract and check CRC32 sums
+	  -C [ --directory ] arg   extract files into another directory
+	  -s [ --stop ]            stop on error
 
 Vpkfs
 -----
