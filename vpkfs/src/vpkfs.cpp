@@ -30,10 +30,10 @@
 #include <boost/filesystem/operations.hpp>
 
 #include <vpk/version.h>
-#include <vpk/exception.h>
 #include <vpk/file.h>
 #include <vpk/vpkfs.h>
 #include <vpk/fuse_args.h>
+#include <vpk/io_error.h>
 
 namespace fs = boost::filesystem;
 

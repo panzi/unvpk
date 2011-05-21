@@ -8,6 +8,7 @@ include_directories("../libvpk/include" "include")
 
 add_executable(unvpk
 	src/main.cpp
+	src/console_table.cpp
 )
 
 install(TARGETS unvpk

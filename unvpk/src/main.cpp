@@ -22,14 +22,18 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <vpk.h>
 #include <vpk/console_handler.h>
+#include <vpk/console_table.h>
 
-namespace fs = boost::filesystem;
-namespace po = boost::program_options;
+namespace fs   = boost::filesystem;
+namespace po   = boost::program_options;
+namespace algo = boost::algorithm;
 
-void usage(const po::options_description &desc) {
+static void usage(const po::options_description &desc) {
 	std::cout <<
 		"Usage: unvpk [OPTION...] ARCHIVE [FILE...]\n"
 		"List, check and extract VPK archives.\n"
@@ -41,16 +45,95 @@ void usage(const po::options_description &desc) {
 		"(c) 2011 Mathias Panzenböck\n";
 }
 
+template<typename SizeFormatter>
+static void list(
+		const Vpk::Nodes &nodes,
+		const std::vector<std::string> &prefix,
+		Vpk::ConsoleTable &table,
+		SizeFormatter szfmt,
+		size_t &files,
+		size_t &dirs,
+		size_t &sumsize) {
+	for (Vpk::Nodes::const_iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+		Vpk::Node *node = it->second.get();
+		std::vector<std::string> path(prefix);
+		path.push_back(node->name());
+		if (node->type() == Vpk::Node::DIR) {
+			list(((const Vpk::Dir*) node)->nodes(), path, table, szfmt, files, dirs, sumsize);
+			++ dirs;
+		}
+		else {
+			Vpk::File *file = (Vpk::File *) node;
+			size_t size = file->size ? file->size : file->data.size();
+			sumsize += size;
+
+			table.row(boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
+			++ files;
+		}
+	}
+}
+
+static size_t bytes(size_t size) {
+	return size;
+}
+
+static std::string humanReadableSize(size_t size) {
+	if (size < 1024) {
+		return lexical_cast<std::string>(size);
+	}
+	else if (size < 1024L * 1024) {
+		return (boost::format("%.1lfK") % (size / (double)1024)).str();
+	}
+	else if (size < 1024L * 1024 * 1024) {
+		return (boost::format("%.1lfM") % (size / (double)(1024L * 1024))).str();
+	}
+	else if (size < 1024LL * 1024 * 1024 * 1024) {
+		return (boost::format("%.1lfG") % (size / (double)(1024L * 1024 * 1024))).str();
+	}
+	else if (size < 1024LL * 1024 * 1024 * 1024 * 1024) {
+		return (boost::format("%.1lfT") % (size / (double)(1024LL * 1024 * 1024 * 1024))).str();
+	}
+	else if (size < 1024LL * 1024 * 1024 * 1024 * 1024 * 1024) {
+		return (boost::format("%.1lfP") % (size / (double)(1024LL * 1024 * 1024 * 1024 * 1024))).str();
+	}
+	else {
+		return (boost::format("%.1lfE") % (size / (double)(1024LL * 1024 * 1024 * 1024 * 1024 * 1024))).str();
+	}
+}
+
+static void list(const Vpk::Package &package, bool humanreadable) {
+	Vpk::ConsoleTable table;
+	table.columns(Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::LEFT);
+	table.row("CRC32", "Size", "Filename");
+	size_t files = 0, dirs = 0, sumsize = 0;
+	if (humanreadable) {
+		list(package.nodes(), std::vector<std::string>(), table, humanReadableSize, files, dirs, sumsize);
+	}
+	else {
+		list(package.nodes(), std::vector<std::string>(), table, bytes, files, dirs, sumsize);
+	}
+	table.print(std::cout);
+	std::cout << files << " files (";
+	if (humanreadable) {
+		std::cout << humanReadableSize(sumsize);
+	}
+	else {
+		std::cout << sumsize;
+	}
+	std::cout << " total size), " << dirs << " directories\n";
+}
+
 int main(int argc, char *argv[]) {
 	po::options_description desc("Options");
 	desc.add_options()
-		("help,h",       "print help message")
-		("version,v",    "print version information")
-		("list,l",       "list archive contents")
-		("check,c",      "check CRC32 sums")
-		("xcheck,x",     "extract and check CRC32 sums")
-		("directory,C",  po::value<std::string>(), "extract files into another directory")
-		("stop,s",       "stop on error");
+		("help,H",           "print help message")
+		("version,v",        "print version information")
+		("list,l",           "list archive contents")
+		("human-readable,h", "use human readable file sizes in listing")
+		("check,c",          "check CRC32 sums")
+		("xcheck,x",         "extract and check CRC32 sums")
+		("directory,C",      po::value<std::string>(), "extract files into another directory")
+		("stop,s",           "stop on error");
 
 	po::options_description hidden;
 	hidden.add_options()
@@ -77,13 +160,14 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	bool list   = vm.count("list")   > 0;
-	bool check  = vm.count("check")  > 0;
-	bool xcheck = vm.count("xcheck") > 0;
-	bool stop   = vm.count("stop")   > 0;
+	bool list          = vm.count("list")   > 0;
+	bool check         = vm.count("check")  > 0;
+	bool xcheck        = vm.count("xcheck") > 0;
+	bool stop          = vm.count("stop")   > 0;
+	bool humanreadable = vm.count("human-readable")   > 0;
 
 	std::string directory = vm.count("directory") > 0 ? vm["directory"].as<std::string>() : std::string(".");
-	std::string archive   = vm.count("archive") > 0 ? vm["archive"].as<std::string>() : std::string("-");
+	std::string archive   = vm.count("archive")   > 0 ? vm["archive"].as<std::string>()   : std::string("-");
 	std::vector<std::string> filter;
 	
 	if (vm.count("filter") > 0) {
@@ -107,7 +191,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (list) {
-			package.list();
+			::list(package, humanreadable);
 		}
 		else if (xcheck) {
 			package.extract(directory, true);

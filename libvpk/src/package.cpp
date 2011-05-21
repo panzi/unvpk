@@ -51,7 +51,8 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 	std::string filename(path.filename());
 		
 	if (filename.size() < 8 || tolower(filename.substr(filename.size()-8)) != "_dir.vpk") {
-		Exception exc((boost::format("file does not end in \"_dir.vpk\": \"%s\"") % path.string()).str());
+		Exception exc((boost::format("file does not end in \"_dir.vpk\": \"%s\"")
+			% path.string()).str());
 		if (m_handler) {
 			if (m_handler->archiveerror(exc, path.string())) {
 				throw exc;
@@ -86,7 +87,8 @@ void Vpk::Package::read(FileIO &io) {
 		unsigned int indexSize = io.readLU32();
 
 		if (version != 1) {
-			throw FileFormatError((boost::format("unexpected vpk version %d") % version).str());
+			throw FileFormatError((boost::format("unsupported VPK version: %u")
+				% version).str());
 		}
 	}
 
@@ -134,7 +136,8 @@ Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
 			if (node->type() != Node::DIR) {
 				std::vector<std::string> prefix;
 				std::copy(path.begin(), ip+1, std::back_inserter(prefix));
-				throw Exception(std::string("path is not a directory: ") + algo::join(prefix, "/"));
+				throw Exception(std::string("path is not a directory: ")
+					+ algo::join(prefix, "/"));
 			}
 		
 			dir = (Dir*) node;
@@ -236,24 +239,6 @@ static size_t filecount(const Vpk::Nodes &nodes) {
 
 size_t Vpk::Package::filecount() const {
 	return ::filecount(nodes());
-}
-
-static void list(const Vpk::Nodes &nodes, const std::vector<std::string> &prefix, std::ostream &os) {
-	for (Vpk::Nodes::const_iterator it = nodes.begin(); it != nodes.end(); ++ it) {
-		Vpk::Node *node = it->second.get();
-		std::vector<std::string> path(prefix);
-		path.push_back(node->name());
-		if (node->type() == Vpk::Node::DIR) {
-			list(((const Vpk::Dir*) node)->nodes(), path, os);
-		}
-		else {
-			os << algo::join(path, "/") << std::endl;
-		}
-	}
-}
-
-void Vpk::Package::list(std::ostream &os) const {
-	::list(nodes(), std::vector<std::string>(), os);
 }
 
 void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {

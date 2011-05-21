@@ -57,10 +57,6 @@ namespace Vpk {
 		const Handler *handler() const { return m_handler; }
 
 		void filter(const std::vector<std::string> &paths);
-
-		void list(std::ostream &os = std::cout) const;
-		void list(const std::vector<std::string> &filter, std::ostream &os = std::cout) const;
-
 		void extract(const std::string &destdir, bool check = false) const;
 		void check() const;
 		void process(DataHandlerFactory &factory) const;
