@@ -299,9 +299,12 @@ bool Vpk::Package::error(const std::exception &exc, const std::string &path, Err
 	}
 }
 
+std::string Vpk::Package::archiveName(uint16_t index) const {
+	return (boost::format("%s_%03d.vpk") % name() % index).str();
+}
+
 boost::filesystem::path Vpk::Package::archivePath(uint16_t index) const {
-	return fs::path(m_srcdir) /
-		(boost::format("%s_%03d.vpk") % name() % index).str();
+	return fs::path(m_srcdir) / archiveName(index);
 }
 
 void Vpk::Package::extract(const std::string &destdir, bool check) const {

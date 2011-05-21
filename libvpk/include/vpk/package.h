@@ -49,6 +49,7 @@ namespace Vpk {
 		Dir &mkpath(const std::string &path);
 		Dir &mkpath(const std::vector<std::string> &path);
 
+		std::string             archiveName(uint16_t index) const;
 		boost::filesystem::path archivePath(uint16_t index) const;
 		const std::string &srcdir() const { return m_srcdir; }
 		Node *get(const std::string &path) { return get(path.c_str()); }

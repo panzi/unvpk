@@ -23,6 +23,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <vpk.h>
@@ -32,6 +33,8 @@
 namespace fs   = boost::filesystem;
 namespace po   = boost::program_options;
 namespace algo = boost::algorithm;
+
+using boost::lexical_cast;
 
 static void usage(const po::options_description &desc) {
 	std::cout <<
@@ -64,10 +67,19 @@ static void list(
 		}
 		else {
 			Vpk::File *file = (Vpk::File *) node;
-			size_t size = file->size ? file->size : file->data.size();
-			sumsize += size;
+			size_t size = file->size;
+			
+			if (size) {
+				table.row(file->index,
+					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
+			}
+			else {
+				size = file->data.size();
+				table.row("-",
+					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
+			}
 
-			table.row(boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
+			sumsize += size;
 			++ files;
 		}
 	}
@@ -103,8 +115,8 @@ static std::string humanReadableSize(size_t size) {
 
 static void list(const Vpk::Package &package, bool humanreadable) {
 	Vpk::ConsoleTable table;
-	table.columns(Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::LEFT);
-	table.row("CRC32", "Size", "Filename");
+	table.columns(Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::LEFT);
+	table.row("Archive", "CRC32", "Size", "Filename");
 	size_t files = 0, dirs = 0, sumsize = 0;
 	if (humanreadable) {
 		list(package.nodes(), std::vector<std::string>(), table, humanReadableSize, files, dirs, sumsize);
