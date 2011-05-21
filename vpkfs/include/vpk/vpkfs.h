@@ -45,6 +45,7 @@ namespace Vpk {
 
 		int run();
 		int getattr(const char *path, struct stat *stbuf);
+		int opendir(const char *path, struct fuse_file_info *fi);
 		int readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		            off_t offset, struct fuse_file_info *fi);
 		int open(const char *path, struct fuse_file_info *fi);
@@ -64,8 +65,6 @@ namespace Vpk {
 		void close(uint16_t index, FILE *stream);
 		void statfs(const Node *node);
 
-		typedef boost::unordered_map< uint64_t, std::pair<std::string, File*> > Filemap;
-		typedef boost::unordered_map< std::string, uint64_t > Descrs;
 		typedef boost::unordered_map< uint16_t, FILE* > Archives;
 
 		FuseArgs         m_args;
@@ -75,8 +74,6 @@ namespace Vpk {
 		ConsoleHandler   m_handler;
 		Package          m_package;
 		Archives         m_archives;
-		Filemap          m_filemap;
-		Descrs           m_descrs;
 		fsfilcnt_t       m_files;
 		boost::unordered_set<uint16_t> m_indices;
 	};

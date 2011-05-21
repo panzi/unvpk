@@ -176,6 +176,11 @@ static int vpk_getattr(const char *path, struct stat *stbuf) {
 		path, stbuf);
 }
 
+static int vpk_opendir(const char *path, struct fuse_file_info *fi) {
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->opendir(
+		path, fi);
+}
+
 static int vpk_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                        off_t offset, struct fuse_file_info *fi) {
 	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->readdir(
@@ -191,11 +196,6 @@ static int vpk_read(const char *path, char *buf, size_t size, off_t offset,
                     struct fuse_file_info *fi) {
 	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->read(
 		path, buf, size, offset, fi);
-}
-
-static int vpk_release(const char *path, struct fuse_file_info *fi) {
-	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->release(
-		path, fi);
 }
 
 static int vpk_statfs(const char *path, struct statvfs *stbuf) {
@@ -223,13 +223,13 @@ static struct fuse_operations vpkfuse_operations = {
 	/* write            */ 0,
 	/* statfs           */ vpk_statfs,
 	/* flush            */ 0,
-	/* release          */ vpk_release,
+	/* release          */ 0,
 	/* fsync            */ 0,
 	/* setxattr         */ 0,
 	/* getxattr         */ 0,
 	/* listxattr        */ 0,
 	/* removexattr      */ 0,
-	/* opendir          */ 0,
+	/* opendir          */ vpk_opendir,
 	/* readdir          */ vpk_readdir,
 	/* releasedir       */ 0,
 	/* fsyncdir         */ 0,
@@ -303,17 +303,18 @@ int Vpk::Vpkfs::getattr(const char *path, struct stat *stbuf) {
 	}
 
 	vpk_stat(node, stbuf);
-	std::string archive;
-
-	if (node->type() == Vpk::Node::FILE && ((File*) node)->size) {
-		archive = m_package.archivePath(((File*) node)->index).string();
-	}
-	else {
-		archive = m_archive;
-	}
 
 	struct stat archst;
-	int code = stat(archive.c_str(), &archst);
+	int code = 0;
+	if (node->type() == Vpk::Node::FILE && ((File*) node)->size) {
+		FILE *arch = archive(((File*) node)->index, &code);
+		if (arch) {
+			code = fstat(fileno(arch), &archst);
+		}
+	}
+	else {
+		code = stat(m_archive.c_str(), &archst);
+	}
 
 	if (code == 0) {
 		stbuf->st_uid = archst.st_uid;
@@ -324,11 +325,10 @@ int Vpk::Vpkfs::getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_mtime = archst.st_mtime;
 	}
 
-	return code;
+	return -code;
 }
 
-int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                       off_t offset, struct fuse_file_info *fi) {
+int Vpk::Vpkfs::opendir(const char *path, struct fuse_file_info *fi) {
 	Node *node = m_package.get(path);
 	
 	if (!node) {
@@ -339,13 +339,25 @@ int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		return -ENOTDIR;
 	}
 
+	if((fi->flags & 3) != O_RDONLY)
+		return -EACCES;
+
+	fi->fh = (uint64_t) (Dir *) node;
+
+	return 0;
+}
+
+int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+                        off_t offset, struct fuse_file_info *fi) {
+	Dir *dir = (Dir *) fi->fh;
+	
 	struct stat stbuf;
 	memset(&stbuf, 0, sizeof(struct stat));
 
-	if (filler(buf, ".", vpk_stat(node, &stbuf), 0)) return 0;
+	if (filler(buf, ".", vpk_stat(dir, &stbuf), 0)) return 0;
 	if (filler(buf, "..", NULL, 0)) return 0;
 
-	const Nodes &nodes = ((Dir*) node)->nodes();
+	const Nodes &nodes = dir->nodes();
 	for (Nodes::const_iterator i = nodes.begin(); i != nodes.end(); ++ i) {
 		const Node *child = i->second.get();
 		if (filler(buf, child->name().c_str(), vpk_stat(child, &stbuf), 0)) return 0;
@@ -355,13 +367,6 @@ int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 }
 
 int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
-	Descrs::iterator di = m_descrs.find(path);
-
-	if (di != m_descrs.end()) {
-		fi->fh = di->second;
-		return 0;
-	}
-
 	Node *node = m_package.get(path);
 	
 	if (!node)
@@ -373,18 +378,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	if((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
 
-	// find free file descriptor
-	uint64_t max = std::numeric_limits<uint64_t>::max();
-	for (uint64_t fd = 1;; ++ fd) {
-		if (m_filemap.find(fd) == m_filemap.end()) {
-			m_descrs[path] = fi->fh = fd;
-			m_filemap[fd] = std::pair<std::string,File*>(path, (File*) node);
-			break;
-		}
-
-		if (fd == max)
-			return -ENFILE;
-	}
+	fi->fh = (uint64_t) (File *) node;
 
 	return 0;
 }
@@ -414,13 +408,7 @@ FILE *Vpk::Vpkfs::archive(uint16_t index, int *errnum) {
 
 int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
          struct fuse_file_info *fi) {
-	Filemap::iterator i = m_filemap.find(fi->fh);
-
-	if (i == m_filemap.end()) {
-		return -EBADF;
-	}
-
-	File *file = i->second.second;
+	File *file = (File *) fi->fh;
 
 	if (file->size) {
 		if (offset >= file->size) {
@@ -433,7 +421,7 @@ int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
 			return -errnum;
 
 		size_t n = std::min(size, (size_t)(file->size - offset));
-		if (fseek(archive, file->offset + offset, SEEK_SET) != 0) {
+		if (fseeko(archive, file->offset + offset, SEEK_SET) != 0) {
 			return -errno;
 		}
 
@@ -456,19 +444,6 @@ int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
 		memcpy(buf, &file->data[offset], n);
 		return n;
 	}
-}
-
-int Vpk::Vpkfs::release(const char *path, struct fuse_file_info *fi) {
-	Filemap::iterator i = m_filemap.find(fi->fh);
-
-	if (i == m_filemap.end()) {
-		return -EBADF;
-	}
-
-	m_descrs.erase(i->second.first);
-	m_filemap.erase(fi->fh);
-
-	return 0;
 }
 
 int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
