@@ -35,7 +35,7 @@ Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 	vpkfs [OPTIONS] ARCHIVE MOUNTPOINT
 	
 	ARCHIVE has to be a file named "*_dir.vpk".
-	This filesystem is read-only, single threaded and only supports blocking operations.
+	This filesystem is read-only and only supports blocking operations.
 	
 	Options:
 		-o opt,[opt...]        mount options
@@ -43,6 +43,10 @@ Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 		-v   --version         print version
 		-d   -o debug          enable debug output (implies -f)
 		-f                     foreground operation
+	    -s                     disable multi-threaded operation
+	                           Note that this might actually increase
+	                           performance in case you access the
+	                           filesystem with only one process.
 
 Setup
 -----
