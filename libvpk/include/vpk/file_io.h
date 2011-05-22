@@ -79,10 +79,10 @@ namespace Vpk {
 		FILE *stream() { return m_stream; }
 		int fileno();
 
-		void seek(long offset, Whence whence);
-		void seek(long offset) { seek(offset, CUR); }
+		void seek(off_t offset, Whence whence);
+		void seek(off_t offset) { seek(offset, CUR); }
 		void rewind();
-		long tell();
+		off_t tell();
 
 		void put(int ch);
 		int  get();

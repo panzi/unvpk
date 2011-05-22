@@ -103,17 +103,17 @@ void Vpk::FileIO::close() {
 	}
 }
 
-void Vpk::FileIO::seek(long offset, Whence whence) {
+void Vpk::FileIO::seek(off_t offset, Whence whence) {
 	if (!m_stream) throw FileIOClosedError();
-	if (fseek(m_stream, offset, whence) != 0) {
+	if (fseeko(m_stream, offset, whence) != 0) {
 		throw IOError(errno);
 	}
 }
 
-long Vpk::FileIO::tell() {
+off_t Vpk::FileIO::tell() {
 	if (!m_stream) throw FileIOClosedError();
-	long pos = ftell(m_stream);
-	if (pos == -1L) {
+	off_t pos = ftello(m_stream);
+	if (pos == -1) {
 		throw IOError(errno);
 	}
 	return pos;
