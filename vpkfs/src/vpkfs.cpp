@@ -467,21 +467,17 @@ int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
 	return 0;
 }
 
-void Vpk::Vpkfs::close(uint16_t index) {
-	int fd = m_archives[index];
-	if (::close(fd) != 0) {
-		int errnum = errno;
-		std::cerr
-			<< "*** error closing archive \""
-			<< m_package.archivePath(index) << "\": "
-			<< strerror(errnum) << std::endl;
-	}
-	m_archives[index] = -1;
-}
-
 void Vpk::Vpkfs::clear() {
-	for (Archives::iterator i = m_archives.begin(); i != m_archives.end(); ++ i) {
-		close(*i);
+	for (size_t i = 0, n = m_archives.size(); i < n; ++ i) {
+		int fd = m_archives[i];
+		if (fd >= 0 && ::close(fd) != 0) {
+			int errnum = errno;
+			std::cerr
+				<< "*** error closing archive \""
+				<< m_package.archivePath(i) << "\": "
+				<< strerror(errnum) << std::endl;
+		}
+		m_archives[i] = -1;
 	}
 	m_archives.clear();
 	m_indices.clear();

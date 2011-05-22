@@ -40,7 +40,7 @@ namespace Vpk {
 			size(size),
 			offset(offset),
 			index(index),
-			data() {}
+			data(0, 0) {}
 
 		Type type() const { return Node::FILE; }
 		void read(FileIO &io);

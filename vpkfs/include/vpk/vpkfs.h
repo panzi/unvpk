@@ -59,7 +59,6 @@ namespace Vpk {
 		void clear();
 	
 	private:
-		void close(uint16_t index);
 		void statfs(const Node *node);
 
 		typedef std::vector<int> Archives;
