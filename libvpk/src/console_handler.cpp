@@ -49,7 +49,7 @@ bool Vpk::ConsoleHandler::direrror(const std::exception &exc, const std::string 
 	return m_raise;
 }
 
-bool Vpk::ConsoleHandler::fileerror(const std::exception &exc, const std::string &path) {
+bool Vpk::ConsoleHandler::fileerror(const std::exception &exc, const std::string&) {
 	if (m_extracting) {
 		++ m_fail;
 		m_extracting = false;
@@ -95,7 +95,7 @@ void Vpk::ConsoleHandler::extract(const std::string &filepath) {
 	print(filepath);
 }
 
-void Vpk::ConsoleHandler::success(const std::string &filepath) {
+void Vpk::ConsoleHandler::success(const std::string&) {
 	m_extracting = false;
 	++ m_success;
 	std::cout << std::endl;

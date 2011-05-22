@@ -5,7 +5,7 @@ project(vpkfs)
 # what does this do? cmake told me to add these three lines:
 if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
-endif(COMMAND cmake_policy)
+endif()
 
 find_package(PkgConfig)
 pkg_check_modules(FUSE fuse REQUIRED)

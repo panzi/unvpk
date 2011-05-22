@@ -42,11 +42,6 @@ static std::string tolower(const std::string &s) {
 	return s2;
 }
 
-static std::string &tolower(std::string &s) {
-	std::transform(s.begin(), s.end(), s.begin(), (int (*)(int)) std::tolower);
-	return s;
-}
-
 void Vpk::Package::read(const boost::filesystem::path &path) {
 	std::string filename(path.filename());
 		
@@ -83,8 +78,8 @@ void Vpk::Package::read(FileIO &io) {
 		io.seek(-4, CUR);
 	}
 	else {
-		unsigned int version   = io.readLU32();
-		unsigned int indexSize = io.readLU32();
+		unsigned int version      =    io.readLU32();
+		/* unsigned int indexSize = */ io.readLU32();
 
 		if (version != 1) {
 			throw FileFormatError((boost::format("unsupported VPK version: %u")

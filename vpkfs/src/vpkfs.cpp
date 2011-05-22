@@ -372,7 +372,7 @@ int Vpk::Vpkfs::opendir(const char *path, struct fuse_file_info *fi) {
 }
 
 int Vpk::Vpkfs::readdir(const char *, void *buf, fuse_fill_dir_t filler,
-                        off_t offset, struct fuse_file_info *fi) {
+                        off_t, struct fuse_file_info *fi) {
 	Dir *dir = (Dir *) fi->fh;
 	
 	struct stat stbuf;
@@ -426,7 +426,7 @@ int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
 		return count;
 	}
 	else {
-		if (offset >= file->data.size()) {
+		if ((size_t) offset >= file->data.size()) {
 			return 0;
 		}
 		size_t n = std::min(size, file->data.size() - offset);

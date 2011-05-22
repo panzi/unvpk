@@ -35,7 +35,7 @@ namespace Vpk {
 		virtual void finish() = 0;
 	
 		const std::string &path()  const { return m_path; }
-		const uint32_t     crc32() const { return m_crc32; }
+		      uint32_t     crc32() const { return m_crc32; }
 
 	private:
 		std::string m_path;
