@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 2.0)
 
 project(libvpk)
 
-find_package(Boost COMPONENTS system filesystem REQUIRED)
-
 include_directories("include")
 
 add_library(libvpk

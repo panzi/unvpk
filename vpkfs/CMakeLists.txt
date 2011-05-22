@@ -11,8 +11,6 @@ find_package(PkgConfig)
 pkg_check_modules(FUSE fuse REQUIRED)
 add_definitions(${FUSE_CFLAGS_OTHER})
 
-find_package(Boost COMPONENTS system filesystem program_options REQUIRED)
-
 include_directories("../libvpk/include" "include")
 
 add_executable(vpkfs
@@ -27,7 +25,6 @@ install(TARGETS vpkfs
 target_link_libraries(vpkfs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
-  ${Boost_PROGRAM_OPTIONS_LIBRARY}
   ${Fuse_LIBRARY}
   libvpk
   fuse
