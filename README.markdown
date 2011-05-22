@@ -66,9 +66,11 @@ Setup
 	make -j2 && sudo make install
 
 If you don't want to build and install unvpk replace the cmake line with:
+
 	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_UNVPK=OFF ..
 
 If you don't want to build and install vpkfs replace the cmake line with:
+
 	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_VPKFS=OFF ..
 
 Dependencies
