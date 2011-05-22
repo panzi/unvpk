@@ -33,3 +33,40 @@ void Vpk::Dir::read(FileIO &io, const std::string &type) {
 		file->read(io);
 	}
 }
+
+const Vpk::Node *Vpk::Dir::node(const std::string &name) const {
+	Nodes::const_iterator i = m_nodes.find(name);
+	if (i == m_nodes.end()) {
+		return 0;
+	}
+	else {
+		return i->second.get();
+	}
+}
+
+Vpk::Node *Vpk::Dir::node(const std::string &name) {
+	Nodes::iterator i = m_nodes.find(name);
+	if (i == m_nodes.end()) {
+		return 0;
+	}
+	else {
+		return i->second.get();
+	}
+}
+
+void Vpk::Dir::add(Node *node) {
+	m_nodes[node->name()] = NodePtr(node);
+	if (node->type() == DIR) {
+		++ m_subdirs;
+	}
+}
+
+void Vpk::Dir::remove(const std::string &name) {
+	Nodes::iterator i = m_nodes.find(name);
+	if (i != m_nodes.end()) {
+		if (i->second->type() == DIR) {
+			-- m_subdirs;
+		}
+		m_nodes.erase(i);
+	}
+}

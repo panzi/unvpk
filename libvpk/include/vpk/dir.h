@@ -27,16 +27,30 @@
 namespace Vpk {
 	class Dir : public Node {
 	public:
-		Dir(const std::string &name) : Node(name) {}
+		Dir(const std::string &name) : Node(name), m_subdirs(0) {}
 
 		Type type() const { return Node::DIR; }
 		void read(FileIO &io, const std::string &type);
 
 		const Nodes &nodes() const { return m_nodes; }
-		      Nodes &nodes()       { return m_nodes; }
+		const Node *node(const std::string &name) const;
+		      Node *node(const std::string &name);
+		void add(Node *node);
+		void remove(const std::string &name);
+
+		Nodes::iterator begin() { return m_nodes.begin(); }
+		Nodes::iterator end()   { return m_nodes.end(); }
+		Nodes::const_iterator begin() const { return m_nodes.begin(); }
+		Nodes::const_iterator end()   const { return m_nodes.end(); }
+		bool empty() const { return m_nodes.empty(); }
 	
+		// only used by vpkfs so it can give a UNIX-like
+		// hardlink count so find works:
+		size_t subdirs() const { return m_subdirs; }
+
 	private:
-		Nodes m_nodes;
+		Nodes  m_nodes;
+		size_t m_subdirs;
 	};
 	
 	typedef boost::shared_ptr<Dir> DirPtr;

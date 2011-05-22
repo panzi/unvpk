@@ -46,8 +46,8 @@ namespace Vpk {
 		void read(const boost::filesystem::path &path);
 		void read(const std::string &srcdir, const std::string &name, FileIO &io);
 
-		Dir &mkpath(const std::string &path);
-		Dir &mkpath(const std::vector<std::string> &path);
+		Dir &mkpath(const std::string &path) { return mkpath(path.c_str()); }
+		Dir &mkpath(const char *path);
 
 		std::string             archiveName(uint16_t index) const;
 		boost::filesystem::path archivePath(uint16_t index) const;
@@ -70,7 +70,7 @@ namespace Vpk {
 		typedef bool (Handler::*ErrorMethod)(const std::exception &exc, const std::string &path);
 
 		void read(FileIO &io);
-		void filter(Nodes &nodes, const std::set<Node*> &keep);
+		void filter(Dir &dir, const std::set<Node*> &keep);
 		void process(const Nodes &nodes, const std::vector<std::string> &prefix, Archives &archives, DataHandlerFactory &factory) const;
 
 		bool direrror(const std::exception &exc, const std::string &path)     const { return error(exc, path, &Handler::direrror); }

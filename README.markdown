@@ -50,7 +50,16 @@ Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 
 Setup
 -----
+### Download
+	wget https://bitbucket.org/panzi/unvpk/get/tip.tar.bz2 -O unvpk.tar.bz2
+	tar xvjf unvpk.tar.bz2
+	cd repos*
+
+### Or Clone
 	hg clone https://bitbucket.org/panzi/unvpk
+	cd unvpk
+
+### Build and Install
 	mkdir build
 	cd build
 	cmake -DCMAKE_INSTALL_PREFIX=/usr ..

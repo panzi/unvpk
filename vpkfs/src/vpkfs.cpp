@@ -245,7 +245,7 @@ static struct fuse_operations vpkfuse_operations = {
 	/* lock             */ 0,
 	/* utimens          */ 0,
 	/* bmap             */ 0,
-	/* flag_nullpath_ok */ 0,
+	/* flag_nullpath_ok */ 1,
 	/* flag_reserved    */ 0,
 	/* ioctl            */ 0,
 	/* poll             */ 0
@@ -309,7 +309,7 @@ static struct stat *vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
 	stbuf->st_ino = (ino_t) node;
 	if (node->type() == Vpk::Node::DIR) {
 		stbuf->st_mode  = S_IFDIR | 0555;
-		stbuf->st_nlink = 2;
+		stbuf->st_nlink = ((Vpk::Dir *) node)->subdirs() + 2;
 	}
 	else {
 		const Vpk::File *file = (const Vpk::File*) node;
@@ -371,7 +371,7 @@ int Vpk::Vpkfs::opendir(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-int Vpk::Vpkfs::readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+int Vpk::Vpkfs::readdir(const char *, void *buf, fuse_fill_dir_t filler,
                         off_t offset, struct fuse_file_info *fi) {
 	Dir *dir = (Dir *) fi->fh;
 	
@@ -407,7 +407,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
+int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
                      struct fuse_file_info *fi) {
 	File *file = (File *) fi->fh;
 
@@ -435,7 +435,7 @@ int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
 	}
 }
 
-int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
+int Vpk::Vpkfs::statfs(const char *, struct statvfs *stbuf) {
 	struct stat archst;
 	fsfilcnt_t fssize = 0;
 	memset(stbuf, 0, sizeof(struct statvfs));

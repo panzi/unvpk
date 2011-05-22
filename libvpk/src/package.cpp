@@ -109,41 +109,50 @@ void Vpk::Package::read(FileIO &io) {
 	}
 }
 
-Vpk::Dir &Vpk::Package::mkpath(const std::string &path) {
-	std::vector<std::string> pathvec;
-	algo::split(pathvec, path, algo::is_any_of("/"));
-	return mkpath(pathvec);
-}
-
-Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
-	if (path.empty()) {
+Vpk::Dir &Vpk::Package::mkpath(const char *path) {
+	if (!*path) {
 		throw Exception("empty path");
 	}
-	
-	Dir *dir = 0;
-	Nodes *nodes = &this->nodes();
-	for (std::vector<std::string>::const_iterator ip = path.begin(); ip != path.end(); ++ ip) {
-		const std::string &name = *ip;
-		Nodes::iterator in = nodes->find(name);
 
-		if (in == nodes->end()) {
-			dir = new Dir(name);
-			(*nodes)[name] = NodePtr(dir);
+	Dir *dir = this;
+	const char *ptr = path;
+	while (*ptr == '/') ++ ptr;
+	while (*ptr) {
+		const char *slash = strchr(ptr, '/');
+		if (!slash) {
+			Node *node = dir->node(ptr);
+			if (!node) {
+				Dir *newdir = new Dir(ptr);
+				dir->add(newdir);
+				dir = newdir;
+			}
+			else if (node->type() != Node::DIR) {
+				throw Exception((boost::format("path is not a directory: \"%s\"")
+					% path).str());
+			}
+			else {
+				dir = (Dir*) node;
+			}
+			break;
 		}
 		else {
-			Node *node = in->second.get();
-
-			if (node->type() != Node::DIR) {
-				std::vector<std::string> prefix;
-				std::copy(path.begin(), ip+1, std::back_inserter(prefix));
-				throw Exception(std::string("path is not a directory: ")
-					+ algo::join(prefix, "/"));
+			std::string name(ptr, slash - ptr);
+			Node *node = dir->node(name);
+			if (!node) {
+				Dir *newdir = new Dir(name);
+				dir->add(newdir);
+				dir = newdir;
 			}
-		
-			dir = (Dir*) node;
+			else if (node->type() != Node::DIR) {
+				throw Exception((boost::format("path is not a directory: \"%s\"")
+					% std::string(path, slash - path)).str());
+			}
+			else {
+				dir = (Dir*) node;
+			}
+			ptr = slash + 1;
+			while (*ptr == '/') ++ ptr;
 		}
-
-		nodes = &dir->nodes();
 	}
 
 	return *dir;
@@ -152,74 +161,33 @@ Vpk::Dir &Vpk::Package::mkpath(const std::vector<std::string> &path) {
 Vpk::Node *Vpk::Package::get(const char *path) {
 	if (!*path) return 0;
 	
-	Node  *node = this;
-	Nodes *nodes = &this->nodes();
+	Node *node = this;
+	Dir  *dir  = this;
 	const char *ptr = path;
 	while (*ptr == '/') ++ ptr;
 	while (*ptr) {
 		const char *slash = strchr(ptr, '/');
 		if (!slash) {
-			Nodes::iterator i = nodes->find(ptr);
-			if (i == nodes->end()) {
-				return 0;
-			}
-			return i->second.get();
+			return dir->node(ptr);
 		}
 		else {
-			Nodes::iterator i = nodes->find(std::string(ptr, slash - ptr));
-			if (i == nodes->end()) {
+			node = dir->node(std::string(ptr, slash - ptr));
+			if (!node) {
 				return 0;
 			}
-			node = i->second.get();
 			ptr = slash + 1;
-
 			while (*ptr == '/') ++ ptr;
 
 			if (*ptr) {
 				if (node->type() != Node::DIR) {
 					return 0;
 				}
-				nodes = &((Dir*) node)->nodes();
+				dir = (Dir*) node;
 			}
 		}
 	}
 
 	return node;
-
-/*
-	if (path == "/") return this;
-
-	std::vector<std::string> pathvec;
-	algo::split(pathvec, path, algo::is_any_of("/"));
-
-	if (pathvec.empty()) return 0;
-	// remove remnants of "/" at the beginning
-	if (pathvec[0].size() == 0) pathvec.erase(pathvec.begin());
-
-	Node  *node  = this;
-	Nodes *nodes = &this->nodes();
-	std::vector<std::string>::const_iterator ip = pathvec.begin();
-	while (ip != pathvec.end()) {
-		const std::string &name = *ip;
-		Nodes::iterator in = nodes->find(name);
-
-		if (in == nodes->end()) {
-			return 0;
-		}
-
-		node = in->second.get();
-		++ ip;
-
-		if (ip != pathvec.end()) {
-			if (node->type() != Node::DIR) {
-				return 0;
-			}
-			nodes = &((Dir*) node)->nodes();
-		}
-	}
-
-	return node;
-	*/
 }
 
 static size_t filecount(const Vpk::Nodes &nodes) {
@@ -241,17 +209,17 @@ size_t Vpk::Package::filecount() const {
 	return ::filecount(nodes());
 }
 
-void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {
+void Vpk::Package::filter(Dir &dir, const std::set<Node*> &keep) {
 	std::vector<std::string> erase;
-	for (Nodes::iterator it = nodes.begin(); it != nodes.end(); ++ it) {
+	for (Nodes::iterator it = dir.begin(); it != dir.end(); ++ it) {
 		Node *node = it->second.get();
 		bool kept = keep.find(node) != keep.end();
 		if (node->type() == Node::DIR) {
 			if (!kept) {
-				Dir *dir = (Dir*) node;
-				filter(dir->nodes(), keep);
-				if (dir->nodes().empty()) {
-					erase.push_back(node->name());
+				Dir *subdir = (Dir*) node;
+				filter(*subdir, keep);
+				if (subdir->empty()) {
+					erase.push_back(subdir->name());
 				}
 			}
 		}
@@ -261,7 +229,7 @@ void Vpk::Package::filter(Nodes &nodes, const std::set<Node*> &keep) {
 	}
 
 	for (std::vector<std::string>::const_iterator it = erase.begin(); it != erase.end(); ++ it) {
-		nodes.erase(*it);
+		dir.remove(*it);
 	}
 }
 
@@ -283,7 +251,7 @@ void Vpk::Package::filter(const std::vector<std::string> &paths) {
 		}
 	}
 
-	filter(nodes(), keep);
+	filter(*this, keep);
 }
 
 bool Vpk::Package::error(const std::string &msg, const std::string &path, ErrorMethod handler) const {
