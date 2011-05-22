@@ -77,7 +77,7 @@ void usage(const char *binary) {
 	std::cout << "Usage: " << binary << " [OPTIONS] ARCHIVE MOUNTPOINT\n"
 		"Mount VPK archives.\n"
 		"ARCHIVE has to be a file named \"*_dir.vpk\".\n"
-		"This filesystem is read-only, single threaded and only supports blocking operations.\n"
+		"This filesystem is read-only and only supports blocking operations.\n"
 		"\n"
 		"Options:\n"
 		"    -o opt,[opt...]        mount options\n"
@@ -85,6 +85,10 @@ void usage(const char *binary) {
 		"    -v   --version         print version\n"
 		"    -d   -o debug          enable debug output (implies -f)\n"
 		"    -f                     foreground operation\n"
+		"    -s                     disable multi-threaded operation\n"
+		"                           Note that this might actually increase\n"
+		"                           performance in case you access the\n"
+		"                           filesystem with only one process.\n"
 		"\n"
 		"(c) 2011 Mathias Panzenböck\n";
 }
@@ -145,14 +149,12 @@ Vpk::Vpkfs::Vpkfs(int argc, char *argv[], bool allocated)
 			m_flags |= VPK_OPTS_ERROR;
 		}
 	}
-
-	// force single threaded:
-	m_args.insert_arg(1, "-s");
 }
 
 Vpk::Vpkfs::Vpkfs(
 	const std::string &archive,
 	const std::string &mountpoint,
+	bool               singlethreaded,
 	const std::string &mountopts)
 		: m_flags(VPK_OPTS_OK),
 		  m_archive(archive),
@@ -161,8 +163,9 @@ Vpk::Vpkfs::Vpkfs(
 		  m_package(&this->m_handler),
 		  m_files(0) {
 	m_args.add_arg("vpkfs");
-	// force single threaded:
-	m_args.add_arg("-s");
+	if (singlethreaded) {
+		m_args.add_arg("-s");
+	}
 	if (mountopts.size() > 0) {
 		m_args.add_arg("-o");
 		m_args.add_arg(mountopts);
@@ -268,12 +271,35 @@ int Vpk::Vpkfs::run() {
 	if (m_flags & VPK_OPTS_ERROR) return 1;
 	if (m_flags & (VPK_OPTS_HELP | VPK_OPTS_VERSION)) return 0;
 
+	clear();
 	m_handler.setRaise(true);
 	m_package.read(m_archive);
 	m_handler.setRaise(false);
 
 	m_files = 0;
 	statfs(&m_package);
+	int archspace = 0;
+	for (Indices::const_iterator i = m_indices.begin(); i != m_indices.end(); ++ i) {
+		int needspace = *i + 1;
+		if (needspace > archspace) {
+			archspace = needspace;
+		}
+	}
+	
+	m_archives.resize(archspace, -1);
+	for (Indices::const_iterator i = m_indices.begin(); i != m_indices.end(); ++ i) {
+		uint16_t index = *i;
+		fs::path archivePath(m_package.archivePath(index));
+		int fd = ::open(archivePath.string().c_str(), O_RDONLY);
+		if (fd < 0) {
+			int errnum = errno;
+			std::cerr
+				<< "*** error opening archive: \""
+				<< archivePath << "\"\n";
+			throw IOError(errnum);
+		}
+		m_archives[index] = fd;
+	}
 
 	return fuse_main(m_args.argc(), m_args.argv(), &vpkfuse_operations, this);
 }
@@ -307,10 +333,8 @@ int Vpk::Vpkfs::getattr(const char *path, struct stat *stbuf) {
 	struct stat archst;
 	int code = 0;
 	if (node->type() == Vpk::Node::FILE && ((File*) node)->size) {
-		FILE *arch = archive(((File*) node)->index, &code);
-		if (arch) {
-			code = fstat(fileno(arch), &archst);
-		}
+		int fd = m_archives[((File*) node)->index];
+		code = fstat(fd, &archst);
 	}
 	else {
 		code = stat(m_archive.c_str(), &archst);
@@ -383,58 +407,23 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	return 0;
 }
 
-FILE *Vpk::Vpkfs::archive(uint16_t index, int *errnum) {
-	Archives::iterator i = m_archives.find(index);
-	if (i != m_archives.end()) {
-		return i->second;
-	}
-	else {
-		fs::path archivePath(m_package.archivePath(index));
-
-		FILE *archive = fopen(archivePath.string().c_str(), "rb");
-		if (!archive) {
-			int code = errno;
-			if (errnum) *errnum = code;
-			std::cerr
-				<< "*** error opening archive \""
-				<< archivePath << "\": " << strerror(code)
-				<< std::endl;
-			return 0;
-		}
-
-		return m_archives[index] = archive;
-	}
-}
-
 int Vpk::Vpkfs::read(const char *path, char *buf, size_t size, off_t offset,
-         struct fuse_file_info *fi) {
+                     struct fuse_file_info *fi) {
 	File *file = (File *) fi->fh;
 
 	if (file->size) {
 		if (offset >= file->size) {
 			return 0;
 		}
-		int errnum = 0;
-		FILE *archive = this->archive(file->index, &errnum);
-
-		if (!archive)
-			return -errnum;
-
+		int fd = m_archives[file->index];
 		size_t n = std::min(size, (size_t)(file->size - offset));
-		if (fseeko(archive, file->offset + offset, SEEK_SET) != 0) {
+		ssize_t count = pread(fd, buf, n, file->offset + offset);
+
+		if (count < 0) {
 			return -errno;
 		}
-
-		if (fread(buf, 1, n, archive) < n) {
-			if (ferror(archive)) {
-				errnum = errno;
-				close(file->index, archive);
-				m_archives.erase(file->index);
-				return -errnum;
-			}
-		}
 		
-		return n;
+		return count;
 	}
 	else {
 		if (offset >= file->data.size()) {
@@ -478,19 +467,22 @@ int Vpk::Vpkfs::statfs(const char *path, struct statvfs *stbuf) {
 	return 0;
 }
 
-void Vpk::Vpkfs::close(uint16_t index, FILE *stream) {
-	if (fclose(stream) != 0) {
+void Vpk::Vpkfs::close(uint16_t index) {
+	int fd = m_archives[index];
+	if (::close(fd) != 0) {
 		int errnum = errno;
 		std::cerr
 			<< "*** error closing archive \""
 			<< m_package.archivePath(index) << "\": "
 			<< strerror(errnum) << std::endl;
 	}
+	m_archives[index] = -1;
 }
 
 void Vpk::Vpkfs::clear() {
 	for (Archives::iterator i = m_archives.begin(); i != m_archives.end(); ++ i) {
-		close(i->first, i->second);
+		close(*i);
 	}
 	m_archives.clear();
+	m_indices.clear();
 }

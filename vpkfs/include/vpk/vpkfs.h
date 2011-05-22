@@ -24,7 +24,6 @@
 
 #include <vector>
 
-#include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 
 #include <fuse.h>
@@ -40,6 +39,7 @@ namespace Vpk {
 		Vpkfs(
 			const std::string &archive,
 			const std::string &mountpoint,
+			bool               singlethreaded = false,
 			const std::string &mountopts = "");
 		Vpkfs() { clear(); }
 
@@ -51,10 +51,7 @@ namespace Vpk {
 		int open(const char *path, struct fuse_file_info *fi);
 		int read(const char *path, char *buf, size_t size, off_t offset,
 		         struct fuse_file_info *fi);
-		int release(const char *path, struct fuse_file_info *fi);
 		int statfs(const char *path, struct statvfs *stbuf);
-
-		FILE *archive(uint16_t index, int *errnum = 0);
 
 		const std::string &archive()    const { return m_archive; }
 		const std::string &mountpoint() const { return m_mountpoint; }
@@ -62,10 +59,11 @@ namespace Vpk {
 		void clear();
 	
 	private:
-		void close(uint16_t index, FILE *stream);
+		void close(uint16_t index);
 		void statfs(const Node *node);
 
-		typedef boost::unordered_map< uint16_t, FILE* > Archives;
+		typedef std::vector<int> Archives;
+		typedef boost::unordered_set<uint16_t> Indices;
 
 		FuseArgs         m_args;
 		int              m_flags;
@@ -75,7 +73,7 @@ namespace Vpk {
 		Package          m_package;
 		Archives         m_archives;
 		fsfilcnt_t       m_files;
-		boost::unordered_set<uint16_t> m_indices;
+		Indices          m_indices;
 	};
 }
 
