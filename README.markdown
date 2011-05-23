@@ -26,6 +26,9 @@ archives. Such archives are used in Source engine based games like Portal 2.
 	  -x [ --xcheck ]          extract and check CRC32 sums
 	  -C [ --directory ] arg   extract files into another directory
 	  -s [ --stop ]            stop on error
+	  --coverage               coverage analysis of archive data (archive 
+	                           debugging)
+	  --dump-uncovered         dump uncovered areas into files (archive debugging)
 
 Vpkfs
 -----

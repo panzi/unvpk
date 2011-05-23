@@ -29,6 +29,11 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-long-long")
 endif()
 
+# Offsets in VPK archives are uint32_t but off_t might be int32_t on 32bit
+# platforms. This should prevent the case where an offset really needs all
+# 32bits (when an entry starts at a 2GB offset).
+add_definitions(-D_FILE_OFFSET_BITS=64)
+
 add_subdirectory(libvpk)
 
 if(WITH_UNVPK)
