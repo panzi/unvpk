@@ -6,6 +6,7 @@ include_directories("../libvpk/include" "include")
 
 add_executable(unvpk
 	src/main.cpp
+	src/coverage.cpp
 	src/console_table.cpp
 )
 

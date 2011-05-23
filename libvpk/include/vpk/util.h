@@ -16,15 +16,13 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <vpk/file_data_handler.h>
-#include <vpk/util.h>
+#ifndef VPK_UTIL_H
+#define VPK_UTIL_H
 
-namespace fs = boost::filesystem;
+#include <boost/filesystem.hpp>
 
-Vpk::FileDataHandler::FileDataHandler(
-	const fs::path &path, uint32_t crc32, bool check)
-: CheckingDataHandler(path.string(), crc32), m_check(check) {
-	create_path(path.parent_path());
-
-	m_io.open(path, "wb");
+namespace Vpk {
+	void create_path(const boost::filesystem::path &path);
 }
+
+#endif

@@ -16,15 +16,30 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <vpk/file_data_handler.h>
-#include <vpk/util.h>
+#ifndef VPK_COVERAGE_H
+#define VPK_COVERAGE_H
 
-namespace fs = boost::filesystem;
+#include <string>
+#include <map>
 
-Vpk::FileDataHandler::FileDataHandler(
-	const fs::path &path, uint32_t crc32, bool check)
-: CheckingDataHandler(path.string(), crc32), m_check(check) {
-	create_path(path.parent_path());
+namespace Vpk {
+	class Coverage {
+	public:
+		typedef std::map<off_t,size_t> Slices;
 
-	m_io.open(path, "wb");
+		size_t coverage() const;
+		const Slices &slices() const { return m_slices; }
+		
+		void add(off_t offset, size_t size);
+		std::string str(bool humanreadable = false) const;
+		bool empty() const { return m_slices.empty(); }
+		Coverage invert(size_t filesize = 0) const;
+
+		static std::string humanReadableSize(size_t size);
+
+	private:
+		Slices m_slices;
+	};
 }
+
+#endif

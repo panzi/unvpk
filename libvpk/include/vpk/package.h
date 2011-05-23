@@ -44,6 +44,9 @@ namespace Vpk {
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
 		void read(const boost::filesystem::path &path);
+		void read(const char *path, FileIO &io) { read(boost::filesystem::path(path), io); }
+		void read(const std::string &path, FileIO &io) { read(boost::filesystem::path(path), io); }
+		void read(const boost::filesystem::path &path, FileIO &io);
 		void read(const std::string &srcdir, const std::string &name, FileIO &io);
 
 		Dir &mkpath(const std::string &path) { return mkpath(path.c_str()); }

@@ -6,6 +6,7 @@ include_directories("include")
 
 add_library(libvpk
 	src/version.cpp
+	src/util.cpp
 	src/file_io.cpp
 	src/dir.cpp
 	src/file.cpp

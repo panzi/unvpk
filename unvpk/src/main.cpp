@@ -19,6 +19,7 @@
 #include <string>
 #include <iostream>
 #include <exception>
+#include <map>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
@@ -27,8 +28,10 @@
 #include <boost/algorithm/string.hpp>
 
 #include <vpk.h>
+#include <vpk/util.h>
 #include <vpk/console_handler.h>
 #include <vpk/console_table.h>
+#include <vpk/coverage.h>
 
 namespace fs   = boost::filesystem;
 namespace po   = boost::program_options;
@@ -89,37 +92,13 @@ static size_t bytes(size_t size) {
 	return size;
 }
 
-static std::string humanReadableSize(size_t size) {
-	if (size < 1024) {
-		return lexical_cast<std::string>(size);
-	}
-	else if (size < 1024L * 1024) {
-		return (boost::format("%.1lfK") % (size / (double)1024)).str();
-	}
-	else if (size < 1024L * 1024 * 1024) {
-		return (boost::format("%.1lfM") % (size / (double)(1024L * 1024))).str();
-	}
-	else if (size < 1024LL * 1024 * 1024 * 1024) {
-		return (boost::format("%.1lfG") % (size / (double)(1024L * 1024 * 1024))).str();
-	}
-	else if (size < 1024LL * 1024 * 1024 * 1024 * 1024) {
-		return (boost::format("%.1lfT") % (size / (double)(1024LL * 1024 * 1024 * 1024))).str();
-	}
-	else if (size < 1024LL * 1024 * 1024 * 1024 * 1024 * 1024) {
-		return (boost::format("%.1lfP") % (size / (double)(1024LL * 1024 * 1024 * 1024 * 1024))).str();
-	}
-	else {
-		return (boost::format("%.1lfE") % (size / (double)(1024LL * 1024 * 1024 * 1024 * 1024 * 1024))).str();
-	}
-}
-
 static void list(const Vpk::Package &package, bool humanreadable) {
 	Vpk::ConsoleTable table;
 	table.columns(Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::RIGHT, Vpk::ConsoleTable::LEFT);
 	table.row("Archive", "CRC32", "Size", "Filename");
 	size_t files = 0, dirs = 0, sumsize = 0;
 	if (humanreadable) {
-		list(package.nodes(), std::vector<std::string>(), table, humanReadableSize, files, dirs, sumsize);
+		list(package.nodes(), std::vector<std::string>(), table, Vpk::Coverage::humanReadableSize, files, dirs, sumsize);
 	}
 	else {
 		list(package.nodes(), std::vector<std::string>(), table, bytes, files, dirs, sumsize);
@@ -127,12 +106,136 @@ static void list(const Vpk::Package &package, bool humanreadable) {
 	table.print(std::cout);
 	std::cout << files << " "<< (files == 1 ? "file" : "files") << " (";
 	if (humanreadable) {
-		std::cout << humanReadableSize(sumsize);
+		std::cout << Vpk::Coverage::humanReadableSize(sumsize);
 	}
 	else {
 		std::cout << sumsize;
 	}
 	std::cout << " total size), " << dirs << " " << (dirs == 1 ? "directory" : "directories") << "\n";
+}
+
+typedef std::map<int,Vpk::Coverage> Coverages;
+
+static void coverage(const Vpk::Dir &dir, Coverages &covs) {
+	for (Vpk::Dir::const_iterator i = dir.begin(); i != dir.end(); ++ i) {
+		Vpk::Node *node = i->second.get();
+		if (node->type() == Vpk::Node::DIR) {
+			coverage(*(Vpk::Dir*) node, covs);
+		}
+		else {
+			Vpk::File *file = (Vpk::File*) node;
+			if (file->size) {
+				covs[file->index].add(file->offset, file->size);
+			}
+		}
+	}
+}
+
+static void coverage(
+		const fs::path &archindex,
+		off_t dirPos,
+		const Vpk::Package &package,
+		bool dump,
+		const fs::path &destdir,
+		bool humanreadable) {
+	Coverages covs;
+	covs[-1].add(0, dirPos);
+
+	coverage(package, covs);
+
+	if (dump) {
+		Vpk::create_path(destdir);
+	}
+
+	size_t uncovered = 0;
+	size_t total = 0;
+	for (Coverages::const_iterator i = covs.begin(); i != covs.end(); ++ i) {
+		std::string archive;
+		size_t size;
+
+		if (i->first == -1) {
+			size = fs::file_size(archindex);
+			archive = archindex.filename();
+		}
+		else {
+			fs::path path = package.archivePath(i->first);
+			size = fs::file_size(path);
+			archive = path.filename();
+		}
+
+		total += size;
+		std::string sizeStr = humanreadable ?
+			Vpk::Coverage::humanReadableSize(size) :
+			boost::lexical_cast<std::string>(size);
+
+		const Vpk::Coverage &covered = i->second;
+		Vpk::Coverage missing = covered.invert(size);
+		
+		size_t missingSize = missing.coverage();
+		
+		if (missingSize == 0)
+			continue;
+
+		uncovered += missingSize;
+		std::string missingSizeStr = humanreadable ?
+			Vpk::Coverage::humanReadableSize(missingSize) :
+			boost::lexical_cast<std::string>(missingSize);
+		
+		size_t coveredSize = covered.coverage();
+		std::string coveredSizeStr = humanreadable ?
+			Vpk::Coverage::humanReadableSize(coveredSize) :
+			boost::lexical_cast<std::string>(coveredSize);
+
+		std::cout
+			<< (boost::format(
+				"File: %s\n"
+				"Size: %s\n"
+				"Covered: %s (%.0lf%%)\n"
+				"Missing: %s\n"
+				"Missing Areas:\n"
+				"\t%s\n\n")
+				% archive % sizeStr % coveredSizeStr % (covered.coverage() * (double)100 / size)
+				% missingSizeStr % missing.str(humanreadable));
+
+		if (dump) {
+			std::string prefix = (destdir / archive).string();
+			Vpk::FileIO arch(fs::path(package.srcdir()) / archive, "rb");
+
+			const Vpk::Coverage::Slices &slices = missing.slices();
+			std::vector<char> buf;
+			for (Vpk::Coverage::Slices::const_iterator i = slices.begin(); i != slices.end(); ++ i) {
+				if (buf.size() < i->second) {
+					buf.resize(i->second, 0);
+				}
+				arch.seek(i->first, Vpk::FileIO::SET);
+				arch.read(&buf[0], i->second);
+
+				Vpk::FileIO out((boost::format("%s_%lu_%lu.bin") % prefix % i->first % i->second).str(), "wb");
+				out.write(&buf[0], i->second);
+			}
+		}
+	}
+
+	std::string totalStr = humanreadable ?
+		Vpk::Coverage::humanReadableSize(total) :
+		boost::lexical_cast<std::string>(total);
+
+	size_t covered = total - uncovered;
+	std::string coveredStr = humanreadable ?
+		Vpk::Coverage::humanReadableSize(covered) :
+		boost::lexical_cast<std::string>(covered);
+
+	std::string uncoveredStr = humanreadable ?
+		Vpk::Coverage::humanReadableSize(uncovered) :
+		boost::lexical_cast<std::string>(uncovered);
+
+	std::cout
+		<< (boost::format(
+			"Total Size: %s\n"
+			"Total Covered: %s (%.0lf%%)\n"
+			"Total Missing: %s\n")
+		% totalStr % coveredStr % (covered * (double)100 / total)
+		% uncoveredStr);
 }
 
 int main(int argc, char *argv[]) {
@@ -145,7 +248,9 @@ int main(int argc, char *argv[]) {
 		("check,c",          "check CRC32 sums")
 		("xcheck,x",         "extract and check CRC32 sums")
 		("directory,C",      po::value<std::string>(), "extract files into another directory")
-		("stop,s",           "stop on error");
+		("stop,s",           "stop on error")
+		("coverage",         "coverage analysis of archive data (archive debugging)")
+		("dump-uncovered",   "dump uncovered areas into files (archive debugging)");
 
 	po::options_description hidden;
 	hidden.add_options()
@@ -172,11 +277,13 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	bool list          = vm.count("list")   > 0;
-	bool check         = vm.count("check")  > 0;
-	bool xcheck        = vm.count("xcheck") > 0;
-	bool stop          = vm.count("stop")   > 0;
-	bool humanreadable = vm.count("human-readable")   > 0;
+	bool list          = vm.count("list")     > 0;
+	bool check         = vm.count("check")    > 0;
+	bool xcheck        = vm.count("xcheck")   > 0;
+	bool stop          = vm.count("stop")     > 0;
+	bool coverage      = vm.count("coverage") > 0;
+	bool dump          = vm.count("dump-uncovered") > 0;
+	bool humanreadable = vm.count("human-readable") > 0;
 
 	std::string directory = vm.count("directory") > 0 ? vm["directory"].as<std::string>() : std::string(".");
 	std::string archive   = vm.count("archive")   > 0 ? vm["archive"].as<std::string>()   : std::string("-");
@@ -190,19 +297,19 @@ int main(int argc, char *argv[]) {
 	Vpk::Package package(&handler);
 
 	try {
-		if (archive == "-") {
-			Vpk::FileIO io(stdin);
-			package.read(".", "", io);
-		}
-		else {
-			package.read(archive);
-		}
+		Vpk::FileIO io(archive);
+		package.read(archive, io);
+		off_t pos = io.tell();
+		io.close();
 
 		if (!filter.empty()) {
 			package.filter(filter);
 		}
 
-		if (list) {
+		if (coverage || dump) {
+			::coverage(archive, pos, package, dump, directory, humanreadable);
+		}
+		else if (list) {
 			::list(package, humanreadable);
 		}
 		else if (xcheck) {

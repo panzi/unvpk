@@ -43,6 +43,11 @@ static std::string tolower(const std::string &s) {
 }
 
 void Vpk::Package::read(const boost::filesystem::path &path) {
+	FileIO io(path, "rb");
+	read(path, io);
+}
+
+void Vpk::Package::read(const boost::filesystem::path &path, FileIO &io) {
 	std::string filename(path.filename());
 		
 	if (filename.size() < 8 || tolower(filename.substr(filename.size()-8)) != "_dir.vpk") {
@@ -63,7 +68,6 @@ void Vpk::Package::read(const boost::filesystem::path &path) {
 	}
 	m_srcdir = fs::system_complete(path).parent_path().string();
 	
-	FileIO io(path, "rb");
 	read(io);
 }
 
@@ -75,7 +79,7 @@ void Vpk::Package::read(const std::string &srcdir, const std::string &name, File
 
 void Vpk::Package::read(FileIO &io) {
 	if (io.readLU32() != 0x55AA1234) {
-		io.seek(-4, CUR);
+		io.seek(-4, FileIO::CUR);
 	}
 	else {
 		unsigned int version      =    io.readLU32();
@@ -99,7 +103,7 @@ void Vpk::Package::read(FileIO &io) {
 			io.readAsciiZ(path);
 			if (path.empty()) break;
 
-			mkpath(path).read(io, type);
+			mkpath(path).read(io, path, type);
 		}
 	}
 }
@@ -341,7 +345,7 @@ void Vpk::Package::process(const Nodes &nodes,
 					archives[file->index] = archive;
 				}
 
-				archive->seek(file->offset);
+				archive->seek(file->offset, FileIO::SET);
 				char data[BUFSIZ];
 				size_t left = file->size;
 				bool fail = false;

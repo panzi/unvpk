@@ -28,12 +28,6 @@
 #include <boost/filesystem/operations.hpp>
 
 namespace Vpk {
-	enum Whence {
-		SET = SEEK_SET,
-		END = SEEK_END,
-		CUR = SEEK_CUR
-	};
-
 	// a simple binary-only FileIO based on C's FILE* functions
 	// this is used because errno+strerror return much more meaningful
 	// error messages than iostreams
@@ -42,6 +36,12 @@ namespace Vpk {
 	// also Vpk::FileReaderClosedError
 	class FileIO {
 	public:
+		enum Whence {
+			SET = SEEK_SET,
+			END = SEEK_END,
+			CUR = SEEK_CUR
+		};
+
 		FileIO() : m_stream(0) {}
 		FileIO(int fd, const char *mode = "rb") : m_stream(0) { open(fd, mode); }
 		FileIO(FILE *stream) : m_stream(stream) {}
@@ -83,6 +83,7 @@ namespace Vpk {
 		void seek(off_t offset) { seek(offset, CUR); }
 		void rewind();
 		off_t tell();
+		size_t size() const;
 
 		void put(int ch);
 		int  get();

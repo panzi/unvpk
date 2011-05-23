@@ -24,6 +24,7 @@
 #include <endian.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 Vpk::FileIO &Vpk::FileIO::operator = (const FileIO &reader) {
 	close();
@@ -117,6 +118,16 @@ off_t Vpk::FileIO::tell() {
 		throw IOError(errno);
 	}
 	return pos;
+}
+
+size_t Vpk::FileIO::size() const {
+	if (!m_stream) throw FileIOClosedError();
+	struct stat stbuf;
+	memset(&stbuf, 0, sizeof(stbuf));
+	if (fstat(::fileno(m_stream), &stbuf) != 0) {
+		throw IOError(errno);
+	}
+	return stbuf.st_size;
 }
 
 void Vpk::FileIO::put(int ch) {

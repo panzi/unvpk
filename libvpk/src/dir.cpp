@@ -16,10 +16,12 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+#include <iostream>
+
 #include <vpk/dir.h>
 #include <vpk/file.h>
 
-void Vpk::Dir::read(FileIO &io, const std::string &type) {
+void Vpk::Dir::read(FileIO &io, const std::string &path, const std::string &type) {
 	// files
 	for (;;) {
 		std::string name;
@@ -28,6 +30,11 @@ void Vpk::Dir::read(FileIO &io, const std::string &type) {
 
 		name += ".";
 		name += type;
+		if (m_nodes.find(name) != m_nodes.end()) {
+			std::cerr
+				<< "*** warning: file occured more than once: \""
+				<< path << "/" << name << "\"\n";
+		}
 		File *file = new File(name);
 		m_nodes[name] = NodePtr(file);
 		file->read(io);
