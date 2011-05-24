@@ -1,5 +1,8 @@
 VPK File Format Specification
 =============================
+My guess is that VPK stands for "Valve Package". It is used by games based on
+Valves Source engine.
+
 VPK stores files into several archives. The directory information is stored
 in a file that ends with "`_dir.vpk`". All other archives related to this
 package are located in the same directory and have the same prefix but instead
@@ -18,24 +21,24 @@ The Directory File
 
 	Header (optional)
 	Body
-	
+
 ### Basic Types
 Note that all numbers in VPK are stored in *little endian* byte order.
-	
+
 	Bytes  Type    Description
 	    1  Byte    a raw data byte
 	    2  U16     unsinged 16 bit integer
 	    4  U32     unsinged 32 bit integer
 	   >1  AsciiZ  Zero terminated ASCII string.
 	               Each character is one byte in size.
-	
+
 ### Header
 Note that the header seems to be optional/was introduced in version 1 of the
 format. Check for the file magic. If the file starts with the binary string
 0x34 0x12 0xAA 0x55 (or the U32 value 0x55AA1234) it contains a header. An
-accidental collition with the older format is inprobable, because these values
+accidental collision with the older format is improbable, because these values
 would be very odd ASCII characters for a pathname.
-	
+
 	 Offset  Count  Type    Description
 	 0x0000      1  U32     File magic: 0x55AA1234
 	 0x0004      1  U32     VPK version, only known version is 1
@@ -62,7 +65,7 @@ would be very odd ASCII characters for a pathname.
 	 Offset  Count  Type    Description
 	 0x0000      1  AsciiZ  Directory path. Subdirectories are separated
 	                        with "/". E.g.: "sound/music"
-          ?      *  File    A list of files. The list is terminated by a 0-byte.
+	      ?      *  File    A list of files. The list is terminated by a 0-byte.
 	                        This can also be interpreted as a zero-length
 	                        directory path.
 	
@@ -78,10 +81,10 @@ encoding or compression.
 	+0x0002      1  U16     Inlined file size (IFS).
 	+0x0004      1  U16     Archive index. This is the "###" part of the
 	                        archive file names.
-    +0x0006      1  U32     Offset within the archive where the file starts.
+	+0x0006      1  U32     Offset within the archive where the file starts.
 	+0x000A      1  U32     File size. A file size of 0 indicates that the file
 	                        data is inlined in the directory file.
-    +0x000E      1  U16     Terminator: 0xFFFF
+	+0x000E      1  U16     Terminator: 0xFFFF
 	+0x0010    IFS  Byte    The inlined file data of the size defined above.
 
 ### Pseudo C structs
