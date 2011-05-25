@@ -16,17 +16,37 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_UTIL_H
-#define VPK_UTIL_H
+#ifndef VPK_SIMPLE_MAGIC_H
+#define VPK_SIMPLE_MAGIC_H
 
-#include <string>
+#include <string.h>
 
-#include <boost/filesystem.hpp>
+#include <vpk/magic.h>
 
 namespace Vpk {
-	std::string tolower(const std::string &s);
-	std::string &tolower(std::string &s);
-	void create_path(const boost::filesystem::path &path);
+	class SimpleMagic : public Magic {
+	public:
+		SimpleMagic(const char *type, const char *magic)
+			: Magic(type), m_magic(magic, magic + strlen(magic)) {}
+
+		SimpleMagic(const char *type, const char *magic, size_t size)
+			: Magic(type), m_magic(magic, magic + size) {}
+
+		SimpleMagic(const std::string &type, const char *magic)
+			: Magic(type), m_magic(magic, magic + strlen(magic)) {}
+
+		SimpleMagic(const std::string &type, const char *magic, size_t size)
+			: Magic(type), m_magic(magic, magic + size) {}
+
+		bool matches(const char magic[], size_t size) const {
+			return size >= m_magic.size() && memcmp(magic, &m_magic[0], m_magic.size()) == 0;
+		}
+	
+		size_t size() const { return m_magic.size(); }
+
+	private:
+		std::vector<char> m_magic;
+	};
 }
 
 #endif

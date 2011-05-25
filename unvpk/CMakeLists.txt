@@ -8,6 +8,8 @@ add_executable(unvpk
 	src/main.cpp
 	src/coverage.cpp
 	src/console_table.cpp
+	src/magic.cpp
+	src/multipart_magic.cpp
 )
 
 install(TARGETS unvpk

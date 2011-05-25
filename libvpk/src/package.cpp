@@ -16,7 +16,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#include <algorithm>
 #include <map>
 #include <set>
 
@@ -26,6 +25,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 
+#include <vpk/util.h>
 #include <vpk/dir.h>
 #include <vpk/file.h>
 #include <vpk/package.h>
@@ -35,12 +35,6 @@
 
 namespace fs   = boost::filesystem;
 namespace algo = boost::algorithm;
-
-static std::string tolower(const std::string &s) {
-	std::string s2(s);
-	std::transform(s2.begin(), s2.end(), s2.begin(), (int (*)(int)) std::tolower);
-	return s2;
-}
 
 void Vpk::Package::read(const boost::filesystem::path &path) {
 	FileIO io(path, "rb");

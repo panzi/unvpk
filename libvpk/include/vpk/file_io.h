@@ -85,6 +85,9 @@ namespace Vpk {
 		off_t tell();
 		size_t size() const;
 
+		void flush();
+		void sync();
+
 		void put(int ch);
 		int  get();
 
@@ -112,9 +115,11 @@ namespace Vpk {
 
 		// may read less than size if EOF
 		size_t   readSome(char *buf, size_t size);
+		size_t   readSome(FileIO &dest, size_t size);
 
 		// throws Vpk::IOError when EOF before size is read
 		void     read(char *buf, size_t size);
+		void     read(FileIO &dest, size_t size);
 
 		uint8_t  readU8();
 		int8_t   readS8();

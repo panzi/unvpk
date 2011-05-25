@@ -16,17 +16,22 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_UTIL_H
-#define VPK_UTIL_H
+#include <vpk/multipart_magic.h>
 
-#include <string>
-
-#include <boost/filesystem.hpp>
-
-namespace Vpk {
-	std::string tolower(const std::string &s);
-	std::string &tolower(std::string &s);
-	void create_path(const boost::filesystem::path &path);
+void Vpk::MultipartMagic::put(size_t offset, const char magic[], size_t size) {
+	m_magics[offset].assign(magic, magic + size);
+	if (offset + size > m_size) {
+		m_size = offset + size;
+	}
 }
 
-#endif
+bool Vpk::MultipartMagic::matches(const char magic[], size_t size) const {
+	if (size < m_size) return false;
+		
+	for (Parts::const_iterator i = m_magics.begin(); i != m_magics.end(); ++ i) {
+		if (memcmp(magic + i->first, &i->second[0], i->second.size()) != 0) {
+			return false;
+		}
+	}
+	return true;
+}

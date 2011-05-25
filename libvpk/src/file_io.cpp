@@ -130,6 +130,24 @@ size_t Vpk::FileIO::size() const {
 	return stbuf.st_size;
 }
 
+void Vpk::FileIO::flush() {
+	if (!m_stream) throw FileIOClosedError();
+	if (fflush(m_stream) != 0) {
+		throw IOError(errno);
+	}
+}
+
+void Vpk::FileIO::sync() {
+#if _BSD_SOURCE || _XOPEN_SOURCE
+	flush();
+	if (fsync(::fileno(m_stream)) != 0) {
+		throw IOError(errno);
+	}
+#else
+	throw IOError(ENOSYS);
+#endif
+}
+
 void Vpk::FileIO::put(int ch) {
 	if (!m_stream) throw FileIOClosedError();
 	if (fputc(ch, m_stream) == EOF) {
@@ -192,6 +210,29 @@ size_t Vpk::FileIO::readSome(char *buf, size_t size) {
 	return count;
 }
 
+size_t Vpk::FileIO::readSome(FileIO &dest, size_t size) {
+	// TODO: if buffers are empty Linux's sendfile could be used
+	if (!m_stream || !dest.m_stream) throw FileIOClosedError();
+	char buf[BUFSIZ];
+	size_t left = size;
+	while (left > 0) {
+		size_t count = fread(buf, 1, std::min(left, (size_t)BUFSIZ), m_stream);
+		if (count < size) {
+			if (ferror(m_stream)) {
+				throw IOError(errno);
+			}
+			else if (count == 0) {
+				break;
+			}
+		}
+		if (fwrite(buf, count, 1, dest.m_stream) < 1) {
+			throw IOError(errno);
+		}
+		left -= count;
+	}
+	return size - left;
+}
+
 void Vpk::FileIO::read(char *buf, size_t size) {
 	if (!m_stream) throw FileIOClosedError();
 	size_t count = fread(buf, size, 1, m_stream);
@@ -202,6 +243,12 @@ void Vpk::FileIO::read(char *buf, size_t size) {
 		else { // feof(m_stream)
 			throw IOError(EOF);
 		}
+	}
+}
+
+void Vpk::FileIO::read(FileIO &dest, size_t size) {
+	if (readSome(dest, size) < size) {
+		throw IOError(EOF);
 	}
 }
 
