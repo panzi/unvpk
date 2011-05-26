@@ -21,6 +21,14 @@ archives. Such archives are used in Source engine based games like Portal 2.
 	  -H [ --help ]            print help message
 	  -v [ --version ]         print version information
 	  -l [ --list ]            list archive contents
+	  -S [ --sort ] arg        sort listing by a comma separated list of keys:
+	                               a, archive    archive index
+	                               c, crc32      CRC32 checksum
+	                               o, offset     offset in archive
+	                               s, size       file size
+	                               n, name       file name
+	                           prepend - to the key to indicate descending sort 
+	                           order
 	  -h [ --human-readable ]  use human readable file sizes in listing
 	  -c [ --check ]           check CRC32 sums
 	  -x [ --xcheck ]          extract and check CRC32 sums
@@ -28,7 +36,8 @@ archives. Such archives are used in Source engine based games like Portal 2.
 	  -s [ --stop ]            stop on error
 	  --coverage               coverage analysis of archive data (archive 
 	                           debugging)
-	  --dump-uncovered         dump uncovered areas into files (archive debugging)
+	  --dump-uncovered         dump uncovered areas into files (implies --coverage,
+	                           archive debugging)
 
 Vpkfs
 -----
@@ -84,7 +93,7 @@ This project uses following components of the [Boost][2] C++ library:
  * `filesystem`
  * `program_options`
 
-For vpkfs FUSE is needed.
+For vpkfs [FUSE][1] is needed.
 
 Notes
 -----
