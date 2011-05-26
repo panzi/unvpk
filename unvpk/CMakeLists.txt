@@ -10,6 +10,7 @@ add_executable(unvpk
 	src/console_table.cpp
 	src/magic.cpp
 	src/multipart_magic.cpp
+	src/sorter.cpp
 )
 
 install(TARGETS unvpk

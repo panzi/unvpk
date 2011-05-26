@@ -34,6 +34,8 @@
 #include <vpk/console_table.h>
 #include <vpk/coverage.h>
 #include <vpk/magic.h>
+#include <vpk/list_entry.h>
+#include <vpk/sorter.h>
 
 namespace fs   = boost::filesystem;
 namespace po   = boost::program_options;
@@ -55,12 +57,10 @@ static void usage(const po::options_description &desc) {
 		"(c) 2011 Mathias Panzenböck\n";
 }
 
-template<typename SizeFormatter>
 static void list(
 		const Nodes &nodes,
 		const std::vector<std::string> &prefix,
-		ConsoleTable &table,
-		SizeFormatter szfmt,
+		List &lst,
 		size_t &files,
 		size_t &dirs,
 		size_t &sumsize) {
@@ -69,23 +69,13 @@ static void list(
 		std::vector<std::string> path(prefix);
 		path.push_back(node->name());
 		if (node->type() == Node::DIR) {
-			list(((const Dir*) node)->nodes(), path, table, szfmt, files, dirs, sumsize);
+			list(((const Dir*) node)->nodes(), path, lst, files, dirs, sumsize);
 			++ dirs;
 		}
 		else {
 			File *file = (File *) node;
-			size_t size = file->preload.size() + file->size;
-			
-			if (file->size) {
-				table.row(file->index,
-					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
-			}
-			else {
-				table.row("-",
-					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
-			}
-
-			sumsize += size;
+			lst.push_back(ListEntry(algo::join(path, "/"), file));
+			sumsize += file->preload.size() + file->size;
 			++ files;
 		}
 	}
@@ -95,17 +85,34 @@ static size_t bytes(size_t size) {
 	return size;
 }
 
-static void list(const Package &package, bool humanreadable) {
-	ConsoleTable table;
-	table.columns(ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::LEFT);
-	table.row("Archive", "CRC32", "Size", "Filename");
+template<typename SizeFormatter>
+static void fillTable(const List &lst, ConsoleTable &table, SizeFormatter szfmt) {
+	for (List::const_iterator i = lst.begin(); i != lst.end(); ++ i) {
+		i->insert(table, szfmt);
+	}
+}
+
+static void list(const Package &package, bool humanreadable, const SortKeys &sorting) {
+	List lst;
 	size_t files = 0, dirs = 0, sumsize = 0;
+
+	list(package.nodes(), std::vector<std::string>(), lst, files, dirs, sumsize);
+
+	if (!sorting.empty()) {
+		Sorter sorter(sorting);
+		std::sort(lst.begin(), lst.end(), sorter);
+	}
+
+	ConsoleTable table;
+	table.columns(ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::LEFT);
+	table.row("Archive", "CRC32", "Offset", "Size", "Filename");
 	if (humanreadable) {
-		list(package.nodes(), std::vector<std::string>(), table, Coverage::humanReadableSize, files, dirs, sumsize);
+		fillTable(lst, table, Coverage::humanReadableSize);
 	}
 	else {
-		list(package.nodes(), std::vector<std::string>(), table, bytes, files, dirs, sumsize);
+		fillTable(lst, table, bytes);
 	}
+
 	table.print(std::cout);
 	std::cout << files << " "<< (files == 1 ? "file" : "files") << " (";
 	if (humanreadable) {
@@ -262,7 +269,8 @@ static void coverage(
 			"Total Size: %s\n"
 			"Total Covered: %s (%.0lf%%)\n"
 			"Total Missing: %s\n")
-		% totalStr % coveredStr % (covered * (double)100 / total)
+		% totalStr
+		% coveredStr % (covered * (double)100 / total)
 		% uncoveredStr);
 }
 
@@ -272,13 +280,20 @@ int main(int argc, char *argv[]) {
 		("help,H",           "print help message")
 		("version,v",        "print version information")
 		("list,l",           "list archive contents")
+		("sort,S",           po::value<std::string>(), "sort listing by a comma separated list of keys:\n"
+		                     "    a, archive    archive index\n"
+		                     "    c, crc32      CRC32 checksum\n"
+		                     "    o, offset     offset in archive\n"
+		                     "    s, size       file size\n"
+		                     "    n, name       file name\n"
+							 "prepend - to the key to indicate descending sort order")
 		("human-readable,h", "use human readable file sizes in listing")
 		("check,c",          "check CRC32 sums")
 		("xcheck,x",         "extract and check CRC32 sums")
 		("directory,C",      po::value<std::string>(), "extract files into another directory")
 		("stop,s",           "stop on error")
 		("coverage",         "coverage analysis of archive data (archive debugging)")
-		("dump-uncovered",   "dump uncovered areas into files (archive debugging)");
+		("dump-uncovered",   "dump uncovered areas into files (implies --coverage, archive debugging)");
 
 	po::options_description hidden;
 	hidden.add_options()
@@ -293,8 +308,15 @@ int main(int argc, char *argv[]) {
 	pos.add("filter", -1);
 
 	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(opts).positional(pos).run(), vm);
-	po::notify(vm);    
+	try {
+		po::store(po::command_line_parser(argc, argv).options(opts).positional(pos).run(), vm);
+		po::notify(vm);
+	}
+	catch (const std::exception &exc) {
+		std::cerr << "*** error: " << exc.what() << std::endl;
+		usage(desc);
+		return 1;
+	}
 
 	if (vm.count("help") || vm.count("archive") < 1) {
 		usage(desc);
@@ -316,9 +338,55 @@ int main(int argc, char *argv[]) {
 	std::string directory = vm.count("directory") > 0 ? vm["directory"].as<std::string>() : std::string(".");
 	std::string archive   = vm.count("archive")   > 0 ? vm["archive"].as<std::string>()   : std::string("-");
 	std::vector<std::string> filter;
+	SortKeys sorting;
 	
 	if (vm.count("filter") > 0) {
 		filter = vm["filter"].as< std::vector<std::string> >();
+	}
+
+	if (vm.count("sort") > 0) {
+		std::vector<std::string> strsorting;
+		boost::split(strsorting, vm["sort"].as<std::string>(), boost::is_any_of(","));
+
+		bool sortByName = false;
+		for (std::vector<std::string>::const_iterator i = strsorting.begin(); i != strsorting.end(); ++ i) {
+			std::string key = tolower(*i);
+			bool asc = true;
+
+			if (key.size() > 0) {
+				if (key[0] == '-') {
+					key = key.substr(1);
+					asc = false;
+				}
+				else if (key[0] == '+') {
+					key = key.substr(1);
+				}
+			}
+
+			if (key == "a" || key == "archive") {
+				sorting.push_back(asc ? SORT_ARCH : SORT_RARCH);
+			}
+			else if (key == "c" || key == "crc32") {
+				sorting.push_back(asc ? SORT_CRC32 : SORT_RCRC32);
+			}
+			else if (key == "o" || key == "offset") {
+				sorting.push_back(asc ? SORT_OFF : SORT_ROFF);
+			}
+			else if (key == "s" || key == "size") {
+				sorting.push_back(asc ? SORT_SIZE : SORT_RSIZE);
+			}
+			else if (key == "n" || key == "name") {
+				sorting.push_back(asc ? SORT_PATH : SORT_RPATH);
+				sortByName = true;
+			}
+			else {
+				std::cerr << "*** error: illegal sort key: \"" << *i << "\"\n";
+				return 1;
+			}
+		}
+		if (!sortByName) {
+			sorting.push_back(SORT_PATH);
+		}
 	}
 
 	ConsoleHandler handler(stop);
@@ -338,7 +406,7 @@ int main(int argc, char *argv[]) {
 			::coverage(archive, pos, package, dump, directory, humanreadable);
 		}
 		else if (list) {
-			::list(package, humanreadable);
+			::list(package, humanreadable, sorting);
 		}
 		else if (xcheck) {
 			package.extract(directory, true);
