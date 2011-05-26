@@ -28,12 +28,14 @@ void Vpk::ConsoleHandler::begin(const Package &package) {
 	m_filecount  = package.filecount();
 	m_success = 0;
 	m_fail    = 0;
+	m_failedArchs.clear();
 }
 
 void Vpk::ConsoleHandler::end() {
 	m_begun      = false;
 	m_extracting = false;
 	println(boost::format("%d successful, %d failed") % m_success % m_fail);
+	m_failedArchs.clear();
 }
 
 bool Vpk::ConsoleHandler::direrror(const std::exception &exc, const std::string &path) {
@@ -71,7 +73,8 @@ bool Vpk::ConsoleHandler::archiveerror(const std::exception &exc, const std::str
 		std::cout << std::endl;
 	}
 
-	if (!m_raise) {
+	if (!m_raise && m_failedArchs.find(path) == m_failedArchs.end()) {
+		m_failedArchs.insert(path);
 		println(boost::format("*** error reading archive \"%s\": %s") % path % exc.what());
 	}
 	return m_raise;

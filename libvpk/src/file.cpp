@@ -34,7 +34,7 @@ void Vpk::File::read(FileIO &io) {
 	}
 
 	if (length > 0) {
-		data.resize(length, 0);
-		io.read(&data[0], length);
+		preload.resize(length, 0);
+		io.read(&preload[0], length);
 	}
 }

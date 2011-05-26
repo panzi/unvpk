@@ -315,7 +315,7 @@ static struct stat *vpk_stat(const Vpk::Node *node, struct stat *stbuf) {
 		const Vpk::File *file = (const Vpk::File*) node;
 		stbuf->st_mode  = S_IFREG | 0444;
 		stbuf->st_nlink = 1;
-		stbuf->st_size  = file->size ? file->size : file->data.size();
+		stbuf->st_size  = file->preload.size() + file->size;
 	}
 	return stbuf;
 }
@@ -410,29 +410,30 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
                      struct fuse_file_info *fi) {
 	File *file = (File *) fi->fh;
+	
+	size_t preloadSize = file->preload.size();
+	size_t fileSize = preloadSize + file->size;
 
-	if (file->size) {
-		if (offset >= file->size) {
-			return 0;
-		}
+	if ((size_t)offset >= fileSize) return 0;
+
+	size_t count = 0;
+	if ((size_t)offset < preloadSize) {
+		count = std::min(size, preloadSize - offset);
+		memcpy(buf, &file->preload[offset], count);
+	}
+
+	size_t rest = std::min(size - count, fileSize - offset);
+	if (rest) {
 		int fd = m_archives[file->index];
-		size_t n = std::min(size, (size_t)(file->size - offset));
-		ssize_t count = pread(fd, buf, n, file->offset + offset);
+		ssize_t restcount = pread(fd, buf + count, rest, file->offset + offset - preloadSize);
 
-		if (count < 0) {
+		if (restcount < 0) {
 			return -errno;
 		}
-		
-		return count;
+		count += restcount;
 	}
-	else {
-		if ((size_t) offset >= file->data.size()) {
-			return 0;
-		}
-		size_t n = std::min(size, file->data.size() - offset);
-		memcpy(buf, &file->data[offset], n);
-		return n;
-	}
+
+	return count;
 }
 
 int Vpk::Vpkfs::statfs(const char *, struct statvfs *stbuf) {

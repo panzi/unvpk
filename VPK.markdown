@@ -70,9 +70,9 @@ would be very odd ASCII characters for a pathname.
 	                        directory path.
 	
 ### File
-The file data for small files may be inlined in the directory file. Otherwise
-it is stored in the separate archive files referenced by an archive index. In
-any case the file is stored as plain consecutive data without any further
+The first part of a file may be inlined in the directory file. The rest is
+stored in the separate archive files referenced by an archive index. In any
+case the file is stored as plain consecutive data without any further
 encoding or compression.
 
 	 Offset  Count  Type    Description
@@ -114,12 +114,12 @@ All of the above again as pseudo C structs.
 	struct File {
 		char     name[*];
 		uint32_t crc32;
-		utin16_t inlined_file_size;
+		utin16_t inlined_size;
 		uint16_t archive_index;
 		uint32_t offset;
-		uint32_t file_size;
+		uint32_t size;
 		uint16_t terminator;
-		uint8_t  inlined_data[inlined_file_size];
+		uint8_t  inlined_data[inlined_size];
 	};
 
 ### Extracted File Paths
@@ -131,14 +131,11 @@ The archive files seem not to contain any data besides the files.
 
 Oddities
 --------
-Even though the format specification above seems to be complete a few oddities
-are encountered in the wild:
+There are sometimes areas in the archive files that are not referenced by any
+file. These areas seem to contain valid files (I've seen WAV, VTX and VCD at a
+glance). Still, Steam does not report any error for this either.
 
- * The CRC32 sums do not match in rare cases, but Steam does not detect any
-   error when checking the archive.
- * There are sometimes areas in the archive files that are not referenced by
-   any file. These areas seem to contain valid files (I've seen WAV, VTX and
-   VCD at a glance). Still, Steam does not report any error for this either.
+References
+----------
 
-Also in theory a file could be stored inlined data and as referenced data at
-the same time. However, I haven't seen such a directory file in the wild.
+ * [VPK File Format - Valve Developer Community](http://developer.valvesoftware.com/wiki/VPK_File_Format)

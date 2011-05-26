@@ -304,94 +304,83 @@ void Vpk::Package::process(const Nodes &nodes,
 				continue;
 			}
 	
-			if (file->size == 0) {
+			size_t preloadSize = file->preload.size();
+			if (preloadSize > 0) {
 				try {
-					dataHandler->process((char*) &file->data[0], file->data.size());
-					dataHandler->finish();
+					dataHandler->process((char*) &file->preload[0], preloadSize);
 				}
 				catch (const std::exception &exc) {
 					if (fileerror(exc, path)) throw;
 					continue;
 				}
 			}
+
+			boost::shared_ptr<FileIO> archive;
+			
+			Archives::iterator i = archives.find(file->index);
+			if (i != archives.end()) {
+				archive = i->second;
+				if (!archive) {
+					Exception exc("archive does not exist");
+					if (archiveerror(exc, this->archivePath(file->index).string())) {
+						throw exc;
+					}
+					continue;
+				}
+			}
 			else {
-				boost::shared_ptr<FileIO> archive;
-				
-				Archives::iterator i = archives.find(file->index);
-				if (i != archives.end()) {
-					archive = i->second;
-					if (!archive) {
-						continue;
+				fs::path archivePath(this->archivePath(file->index));
+				if (!fs::exists(archivePath)) {
+					Exception exc("archive does not exist");
+					if (archiveerror(exc, archivePath.string())) {
+						throw exc;
 					}
+
+					archives[file->index] = boost::shared_ptr<FileIO>();
+					continue;
 				}
-				else {
-					fs::path archivePath(this->archivePath(file->index));
-					if (!fs::exists(archivePath)) {
-						Exception exc("archive does not exist");
-						if (archiveerror(exc, archivePath.string())) {
-							throw exc;
-						}
+				archive.reset(new FileIO(archivePath));
+				archives[file->index] = archive;
+			}
 
-						archives[file->index] = boost::shared_ptr<FileIO>();
-						continue;
-					}
-					archive.reset(new FileIO(archivePath));
-					archives[file->index] = archive;
-				}
-
-				archive->seek(file->offset, FileIO::SET);
-				char data[BUFSIZ];
-				size_t left = file->size;
-				bool fail = false;
-				while (left > 0) {
-					size_t count = std::min(left, (size_t)BUFSIZ);
-					try {
-						archive->read(data, count);
-					}
-					catch (const std::exception& exc) {
-						if (archiveerror(exc, archivePath(file->index).string())) throw;
-						fail = true;
-						break;
-					}
-
-					try {
-						dataHandler->process(data, count);
-					}
-					catch (const std::exception& exc) {
-						if (fileerror(exc, path)) throw;
-						fail = true;
-						break;
-					}
-
-					left -= count;
-				}
-
-				if (fail) continue;
-				
+			archive->seek(file->offset, FileIO::SET);
+			char data[BUFSIZ];
+			size_t left = file->size;
+			bool fail = false;
+			while (left > 0) {
+				size_t count = std::min(left, (size_t)BUFSIZ);
 				try {
-					dataHandler->finish();
+					archive->read(data, count);
+				}
+				catch (const std::exception& exc) {
+					if (archiveerror(exc, archivePath(file->index).string())) throw;
+					fail = true;
+					break;
+				}
+
+				try {
+					dataHandler->process(data, count);
 				}
 				catch (const std::exception& exc) {
 					if (fileerror(exc, path)) throw;
-					continue;
-				}
-					
-				if (!file->data.empty()) {
-					std::string smallpath = path + ".smalldata";
-
-					try {
-						dataHandler.reset(factory.create(smallpath, file->crc32));
-						dataHandler->process((char*) &file->data[0], file->data.size());
-						dataHandler->finish();
-					}
-					catch (const std::exception& exc) {
-						if (fileerror(exc, smallpath)) throw;
-						continue;
-					}
+					fail = true;
+					break;
 				}
 
-				if (m_handler) m_handler->success(path);
+				left -= count;
 			}
+
+			if (fail) continue;
+				
+			try {
+				dataHandler->finish();
+			}
+			catch (const std::exception& exc) {
+				if (fileerror(exc, path)) throw;
+				continue;
+			}
+			
+			if (m_handler) m_handler->success(path);
 		}
 	}
 }

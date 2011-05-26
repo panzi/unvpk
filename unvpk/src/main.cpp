@@ -74,14 +74,13 @@ static void list(
 		}
 		else {
 			File *file = (File *) node;
-			size_t size = file->size;
+			size_t size = file->preload.size() + file->size;
 			
-			if (size) {
+			if (file->size) {
 				table.row(file->index,
 					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
 			}
 			else {
-				size = file->data.size();
 				table.row("-",
 					boost::format("%08x") % file->crc32, szfmt(size), algo::join(path, "/"));
 			}

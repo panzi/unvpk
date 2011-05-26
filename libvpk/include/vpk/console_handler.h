@@ -19,6 +19,7 @@
 #ifndef VPK_CONSOLE_HANDLER_H
 #define VPK_CONSOLE_HANDLER_H
 
+#include <boost/unordered_set.hpp>
 #include <boost/format.hpp>
 
 #include <vpk/package.h>
@@ -59,12 +60,15 @@ namespace Vpk {
 		void println(const boost::format &msg) { println(msg.str()); }
 
 	private:
+		typedef boost::unordered_set<std::string> Paths;
+
 		bool         m_begun;
 		bool         m_extracting;
 		bool         m_raise;
 		unsigned int m_filecount;
 		unsigned int m_success;
 		unsigned int m_fail;
+		Paths        m_failedArchs;
 	};
 }
 

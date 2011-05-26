@@ -40,7 +40,7 @@ namespace Vpk {
 			size(size),
 			offset(offset),
 			index(index),
-			data(0, 0) {}
+			preload(0, 0) {}
 
 		Type type() const { return Node::FILE; }
 		void read(FileIO &io);
@@ -49,7 +49,7 @@ namespace Vpk {
 		uint32_t size;
 		uint32_t offset;
 		uint16_t index;
-		std::vector<char> data;
+		std::vector<char> preload;
 	};
 
 	typedef boost::shared_ptr<File> FilePtr;
