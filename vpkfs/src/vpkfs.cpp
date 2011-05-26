@@ -409,6 +409,8 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 
 int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
                      struct fuse_file_info *fi) {
+	if (offset < 0) return -EINVAL;
+
 	File *file = (File *) fi->fh;
 	
 	size_t preloadSize = file->preload.size();
