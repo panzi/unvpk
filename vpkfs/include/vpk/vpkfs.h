@@ -52,6 +52,8 @@ namespace Vpk {
 		int read(const char *path, char *buf, size_t size, off_t offset,
 		         struct fuse_file_info *fi);
 		int statfs(const char *path, struct statvfs *stbuf);
+		int listxattr(const char *path, char *buf, size_t size);
+		int getxattr(const char *path, const char *name, char *buf, size_t size);
 
 		const std::string &archive()    const { return m_archive; }
 		const std::string &mountpoint() const { return m_mountpoint; }

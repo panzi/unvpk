@@ -23,10 +23,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <memory.h>
+#include <attr/xattr.h>
 
 #include <iostream>
 #include <limits>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/filesystem/operations.hpp>
 
 #include <vpk/version.h>
@@ -206,6 +208,16 @@ static int vpk_statfs(const char *path, struct statvfs *stbuf) {
 		path, stbuf);
 }
 
+static int vpk_listxattr(const char *path, char *buf, size_t size) {
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->listxattr(
+		path, buf, size);
+}
+
+static int vpk_getxattr(const char *path, const char *name, char *buf, size_t size) {
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->getxattr(
+		path, name, buf, size);
+}
+
 static struct fuse_operations vpkfuse_operations = {
 	/* getattr          */ vpk_getattr,
 	/* readlink         */ 0,
@@ -229,8 +241,8 @@ static struct fuse_operations vpkfuse_operations = {
 	/* release          */ 0,
 	/* fsync            */ 0,
 	/* setxattr         */ 0,
-	/* getxattr         */ 0,
-	/* listxattr        */ 0,
+	/* getxattr         */ vpk_getxattr,
+	/* listxattr        */ vpk_listxattr,
 	/* removexattr      */ 0,
 	/* opendir          */ vpk_opendir,
 	/* readdir          */ vpk_readdir,
@@ -468,6 +480,96 @@ int Vpk::Vpkfs::statfs(const char *, struct statvfs *stbuf) {
 	stbuf->f_blocks = (fssize + stbuf->f_bsize - 1) / stbuf->f_bsize;
 
 	return 0;
+}
+
+#define VPK_XATTRS_ALL \
+	"vpkfs.dir_path"
+
+#define VPK_XATTRS_FILES_ONLY \
+	"\0vpkfs.crc32" \
+	"\0vpkfs.preload_size"
+
+#define VPK_XATTRS_ARCHIVED_ONLY \
+	"\0vpkfs.archive_index" \
+	"\0vpkfs.archive_path" \
+	"\0vpkfs.offset"
+
+#define VPK_XATTRS_DIR      VPK_XATTRS_ALL
+#define VPK_XATTRS_INLINED  VPK_XATTRS_ALL VPK_XATTRS_FILES_ONLY
+#define VPK_XATTRS_ARCHIVED VPK_XATTRS_INLINED VPK_XATTRS_ARCHIVED_ONLY
+
+int Vpk::Vpkfs::listxattr(const char *path, char *buf, size_t size) {
+	Node *node = m_package.get(path);
+
+	if (!node) return -ENOENT;
+
+	size_t xattrs_size = 0;
+	const char *xattrs_list = 0;
+	if (node->type() == Node::DIR) {
+		xattrs_size = sizeof(VPK_XATTRS_DIR);
+		xattrs_list = VPK_XATTRS_DIR;
+	}
+	else if (((File*) node)->size) {
+		xattrs_size = sizeof(VPK_XATTRS_ARCHIVED);
+		xattrs_list = VPK_XATTRS_ARCHIVED;
+	}
+	else {
+		xattrs_size = sizeof(VPK_XATTRS_INLINED);
+		xattrs_list = VPK_XATTRS_INLINED;
+	}
+
+	if (xattrs_size > size) {
+		return -ERANGE;
+	}
+
+	memcpy(buf, xattrs_list, xattrs_size);
+	return xattrs_size;
+}
+
+static int getxattr(const std::string &value, char *buf, size_t size) {
+	size_t count = value.size()+1;
+	if (count > size) {
+		return -ERANGE;
+	}
+	memcpy(buf, value.c_str(), count);
+	return count;
+}
+
+int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t size) {
+	Node *node = m_package.get(path);
+
+	if (!node) return -ENOENT;
+	
+	if (strcmp(name, "vpkfs.dir_path") == 0) {
+		return ::getxattr(m_archive, buf, size);
+	}
+	else if (node->type() != Node::FILE) {
+		return -ENOATTR;
+	}
+	else {
+		File *file = (File*) node;
+		if (strcmp(name, "vpkfs.crc32") == 0) {
+			return ::getxattr((boost::format("%x") % file->crc32).str(), buf, size);
+		}
+		else if (strcmp(name, "vpkfs.preload_size") == 0) {
+			return ::getxattr(boost::lexical_cast<std::string>(file->preload.size()), buf, size);
+		}
+		else if (!file->size) {
+			return -ENOATTR;
+		}
+		else if (strcmp(name, "vpkfs.archive_index") == 0) {
+			return ::getxattr(boost::lexical_cast<std::string>(file->index), buf, size);
+		}
+		else if (strcmp(name, "vpkfs.archive_path") == 0) {
+			return ::getxattr(m_package.archivePath(file->index).string(), buf, size);
+		}
+		else if (strcmp(name, "vpkfs.offset") == 0) {
+			return ::getxattr(boost::lexical_cast<std::string>(file->offset), buf, size);
+		}
+		else {
+			return -ENOATTR;
+		}
+	}
 }
 
 void Vpk::Vpkfs::clear() {
