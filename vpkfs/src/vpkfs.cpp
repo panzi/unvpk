@@ -518,20 +518,23 @@ int Vpk::Vpkfs::listxattr(const char *path, char *buf, size_t size) {
 		xattrs_list = VPK_XATTRS_INLINED;
 	}
 
-	if (xattrs_size > size) {
-		return -ERANGE;
+	if (size > 0) {
+		if (xattrs_size > size) {
+			return -ERANGE;
+		}
+		memcpy(buf, xattrs_list, xattrs_size);
 	}
-
-	memcpy(buf, xattrs_list, xattrs_size);
 	return xattrs_size;
 }
 
 static int getxattr(const std::string &value, char *buf, size_t size) {
 	size_t count = value.size()+1;
-	if (count > size) {
-		return -ERANGE;
+	if (size > 0) {
+		if (count > size) {
+			return -ERANGE;
+		}
+		memcpy(buf, value.c_str(), count);
 	}
-	memcpy(buf, value.c_str(), count);
 	return count;
 }
 
