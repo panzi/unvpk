@@ -527,6 +527,17 @@ int Vpk::Vpkfs::listxattr(const char *path, char *buf, size_t size) {
 	return xattrs_size;
 }
 
+template<typename Value>
+static int getxattr(Value value, char *buf, size_t size) {
+	if (size > 0) {
+		if (sizeof(value) > size) {
+			return -ERANGE;
+		}
+		memcpy(buf, &value, sizeof(value));
+	}
+	return sizeof(value);
+}
+
 static int getxattr(const std::string &value, char *buf, size_t size) {
 	size_t count = value.size()+1;
 	if (size > 0) {
@@ -552,22 +563,22 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 	else {
 		File *file = (File*) node;
 		if (strcmp(name, "vpkfs.crc32") == 0) {
-			return ::getxattr((boost::format("%x") % file->crc32).str(), buf, size);
+			return ::getxattr(file->crc32, buf, size);
 		}
 		else if (strcmp(name, "vpkfs.preload_size") == 0) {
-			return ::getxattr(boost::lexical_cast<std::string>(file->preload.size()), buf, size);
+			return ::getxattr((uint16_t) file->preload.size(), buf, size);
 		}
 		else if (!file->size) {
 			return -ENOATTR;
 		}
 		else if (strcmp(name, "vpkfs.archive_index") == 0) {
-			return ::getxattr(boost::lexical_cast<std::string>(file->index), buf, size);
+			return ::getxattr(file->index, buf, size);
 		}
 		else if (strcmp(name, "vpkfs.archive_path") == 0) {
 			return ::getxattr(m_package.archivePath(file->index).string(), buf, size);
 		}
 		else if (strcmp(name, "vpkfs.offset") == 0) {
-			return ::getxattr(boost::lexical_cast<std::string>(file->offset), buf, size);
+			return ::getxattr(file->offset, buf, size);
 		}
 		else {
 			return -ENOATTR;
