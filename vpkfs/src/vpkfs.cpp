@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <memory.h>
 #include <attr/xattr.h>
+#include <endian.h>
 
 #include <iostream>
 #include <limits>
@@ -527,13 +528,16 @@ int Vpk::Vpkfs::listxattr(const char *path, char *buf, size_t size) {
 	return xattrs_size;
 }
 
+static uint16_t tobe(uint16_t value) { return htobe16(value); }
+static uint32_t tobe(uint32_t value) { return htobe32(value); }
+
 template<typename Value>
 static int getxattr(Value value, char *buf, size_t size) {
 	if (size > 0) {
 		if (sizeof(value) > size) {
 			return -ERANGE;
 		}
-		memcpy(buf, &value, sizeof(value));
+		*((Value*) buf) = tobe(value);
 	}
 	return sizeof(value);
 }
