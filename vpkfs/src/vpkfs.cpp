@@ -483,16 +483,16 @@ int Vpk::Vpkfs::statfs(const char *, struct statvfs *stbuf) {
 }
 
 #define VPK_XATTRS_ALL \
-	"vpkfs.dir_path"
+	"user.vpkfs.dir_path"
 
 #define VPK_XATTRS_FILES_ONLY \
-	"\0vpkfs.crc32" \
-	"\0vpkfs.preload_size"
+	"\0user.vpkfs.crc32" \
+	"\0user.vpkfs.preload_size"
 
 #define VPK_XATTRS_ARCHIVED_ONLY \
-	"\0vpkfs.archive_index" \
-	"\0vpkfs.archive_path" \
-	"\0vpkfs.offset"
+	"\0user.vpkfs.archive_index" \
+	"\0user.vpkfs.archive_path" \
+	"\0user.vpkfs.offset"
 
 #define VPK_XATTRS_DIR      VPK_XATTRS_ALL
 #define VPK_XATTRS_INLINED  VPK_XATTRS_ALL VPK_XATTRS_FILES_ONLY
@@ -554,7 +554,7 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 
 	if (!node) return -ENOENT;
 	
-	if (strcmp(name, "vpkfs.dir_path") == 0) {
+	if (strcmp(name, "user.vpkfs.dir_path") == 0) {
 		return ::getxattr(m_archive, buf, size);
 	}
 	else if (node->type() != Node::FILE) {
@@ -562,22 +562,22 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 	}
 	else {
 		File *file = (File*) node;
-		if (strcmp(name, "vpkfs.crc32") == 0) {
+		if (strcmp(name, "user.vpkfs.crc32") == 0) {
 			return ::getxattr(file->crc32, buf, size);
 		}
-		else if (strcmp(name, "vpkfs.preload_size") == 0) {
+		else if (strcmp(name, "user.vpkfs.preload_size") == 0) {
 			return ::getxattr((uint16_t) file->preload.size(), buf, size);
 		}
 		else if (!file->size) {
 			return -ENOATTR;
 		}
-		else if (strcmp(name, "vpkfs.archive_index") == 0) {
+		else if (strcmp(name, "user.vpkfs.archive_index") == 0) {
 			return ::getxattr(file->index, buf, size);
 		}
-		else if (strcmp(name, "vpkfs.archive_path") == 0) {
+		else if (strcmp(name, "user.vpkfs.archive_path") == 0) {
 			return ::getxattr(m_package.archivePath(file->index).string(), buf, size);
 		}
-		else if (strcmp(name, "vpkfs.offset") == 0) {
+		else if (strcmp(name, "user.vpkfs.offset") == 0) {
 			return ::getxattr(file->offset, buf, size);
 		}
 		else {
