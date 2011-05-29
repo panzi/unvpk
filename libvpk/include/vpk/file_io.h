@@ -84,6 +84,7 @@ namespace Vpk {
 		void rewind();
 		off_t tell();
 		size_t size() const;
+		size_t buffered() const;
 
 		void flush();
 		void sync();

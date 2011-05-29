@@ -130,6 +130,26 @@ size_t Vpk::FileIO::size() const {
 	return stbuf.st_size;
 }
 
+size_t Vpk::FileIO::buffered() const {
+#if _POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE
+	if (!m_stream) throw FileIOClosedError();
+	off_t pos = ftello(m_stream);
+	if (pos < 0) {
+		throw IOError(errno);
+	}
+	off_t realpos = lseek(::fileno(m_stream), 0, SEEK_CUR);
+	if (realpos < 0) {
+		throw IOError(errno);
+	}
+	if (pos > realpos) {
+		throw IOError(EIO);
+	}
+	return realpos - pos;
+#else
+	throw IOError(ENOSYS);
+#endif
+}
+
 void Vpk::FileIO::flush() {
 	if (!m_stream) throw FileIOClosedError();
 	if (fflush(m_stream) != 0) {
@@ -210,27 +230,46 @@ size_t Vpk::FileIO::readSome(char *buf, size_t size) {
 	return count;
 }
 
+#define VPK_READ_SOME \
+	char buf[BUFSIZ]; \
+	while (left > 0) { \
+		size_t chunkSize = std::min(left, (size_t)BUFSIZ); \
+		size_t count = fread(buf, 1, chunkSize, m_stream); \
+		if (count < chunkSize) { \
+			if (ferror(m_stream)) { \
+				throw IOError(errno); \
+			} \
+			else { \
+				break; \
+			} \
+		} \
+		if (fwrite(buf, count, 1, dest.m_stream) < 1) { \
+			throw IOError(errno); \
+		} \
+		left -= count; \
+	}
+
+
 size_t Vpk::FileIO::readSome(FileIO &dest, size_t size) {
-	// TODO: if buffers are empty Linux's sendfile could be used
-	if (!m_stream || !dest.m_stream) throw FileIOClosedError();
-	char buf[BUFSIZ];
-	size_t left = size;
-	while (left > 0) {
-		size_t count = fread(buf, 1, std::min(left, (size_t)BUFSIZ), m_stream);
-		if (count < size) {
-			if (ferror(m_stream)) {
-				throw IOError(errno);
-			}
-			else if (count == 0) {
-				break;
-			}
-		}
-		if (fwrite(buf, count, 1, dest.m_stream) < 1) {
+#if (_POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE) && defined(__LINUX__)
+	size_t bufsize = buffered();
+	size_t left = std::min(bufsize, size);
+	VPK_READ_SOME;
+	if (left > 0) {
+		dest.flush();
+		ssize_t count = sendfile(::fileno(dest.m_stream), ::fileno(m_stream), left);
+		if (count < 0) {
 			throw IOError(errno);
 		}
-		left -= count;
+		return bufsize + count;
 	}
+	return size;
+#else
+	if (!m_stream || !dest.m_stream) throw FileIOClosedError();
+	size_t left = size;
+	VPK_READ_SOME;
 	return size - left;
+#endif
 }
 
 void Vpk::FileIO::read(char *buf, size_t size) {
