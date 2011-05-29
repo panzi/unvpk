@@ -177,7 +177,8 @@ static void coverage(
 
 	size_t uncovered = 0;
 	size_t total = 0;
-	std::vector<char> magic(Magic::maxSize(), 0);
+	const size_t magicSize = Magic::maxSize();
+	std::vector<char> magic(magicSize, 0);
 	for (Coverages::const_iterator i = covs.begin(); i != covs.end(); ++ i) {
 		std::string archive;
 		size_t size;
@@ -233,7 +234,7 @@ static void coverage(
 			const Coverage::Slices &slices = missing.slices();
 			for (Coverage::Slices::const_iterator i = slices.begin(); i != slices.end(); ++ i) {
 				arch.seek(i->first, FileIO::SET);
-				size_t count = std::min(i->second, magic.size());
+				size_t count = std::min(i->second, magicSize);
 				arch.read(&magic[0], count);
 
 				std::string type = Magic::extensionOf(&magic[0], count);
@@ -244,8 +245,10 @@ static void coverage(
 				std::cout << "Dumping " << sizeStr << " to \"" << filename << "\"\n";
 
 				FileIO out(filename, "wb");
-				arch.seek(i->first, FileIO::SET);
-				arch.read(out, i->second);
+				out.write(&magic[0], count);
+				if (count < i->second) {
+					arch.read(out, i->second - count);
+				}
 			}
 			std::cout << std::endl;
 		}

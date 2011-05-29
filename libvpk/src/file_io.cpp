@@ -249,7 +249,6 @@ size_t Vpk::FileIO::readSome(char *buf, size_t size) {
 		left -= count; \
 	}
 
-
 size_t Vpk::FileIO::readSome(FileIO &dest, size_t size) {
 #if (_POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE) && defined(__LINUX__)
 	size_t bufsize = buffered();
