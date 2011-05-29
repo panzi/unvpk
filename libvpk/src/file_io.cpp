@@ -26,6 +26,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#if (_POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE) && defined(__linux__)
+#include <sys/sendfile.h>
+#endif
+
 Vpk::FileIO &Vpk::FileIO::operator = (const FileIO &reader) {
 	close();
 	if (reader.m_stream) {
@@ -250,13 +254,16 @@ size_t Vpk::FileIO::readSome(char *buf, size_t size) {
 	}
 
 size_t Vpk::FileIO::readSome(FileIO &dest, size_t size) {
-#if (_POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE) && defined(__LINUX__)
+#if (_POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE) && defined(__linux__)
 	size_t bufsize = buffered();
 	size_t left = std::min(bufsize, size);
 	VPK_READ_SOME;
-	if (left > 0) {
+	if (left != 0) throw IOError(EOF);
+	if (bufsize < size) {
 		dest.flush();
-		ssize_t count = sendfile(::fileno(dest.m_stream), ::fileno(m_stream), left);
+		ssize_t count = sendfile(
+			::fileno(dest.m_stream),
+			::fileno(m_stream), 0, size - bufsize);
 		if (count < 0) {
 			throw IOError(errno);
 		}
