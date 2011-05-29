@@ -437,10 +437,11 @@ int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
 		memcpy(buf, &file->preload[offset], count);
 	}
 
-	size_t rest = std::min(size - count, fileSize - offset);
+	size_t rest = std::min(size - count, fileSize - offset - count);
 	if (rest) {
 		int fd = m_archives[file->index];
-		ssize_t restcount = pread(fd, buf + count, rest, file->offset + offset - preloadSize);
+		ssize_t restcount = pread(fd, buf + count, rest,
+			file->offset + (offset + count - preloadSize));
 
 		if (restcount < 0) {
 			return -errno;
