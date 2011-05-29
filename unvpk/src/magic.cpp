@@ -65,17 +65,22 @@ static Vpk::Magics buildMagics() {
 	mult->put(0, "RIFF");
 	mult->put(8, "WAVEfmt");
 	magics.push_back(Vpk::MagicPtr(mult));
-	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("vtx", "VTX")));
+	const char vtx_magic[] = {0x07, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x35, 0x00, 0x09, 0x00, 0x03, 0x00, 0x00, 0x00};
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("vtx", vtx_magic, sizeof(vtx_magic))));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("vtf", "VTF")));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("mdl", "IDST")));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("vvd", "IDSV")));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("ani", "IDAG")));
-	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("pcf", "<!-- dmx encoding binary 2 format pcf ")));
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("dmx", "<!-- dmx encoding binary 2 format dmx 1 -->")));
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("pcf", "<!-- dmx encoding binary 2 format pcf 1 -->")));
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("pcf", "<!-- dmx encoding binary 3 format pcf 2 -->")));
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("pcf", "<!-- dmx encoding binary 4 format pcf 2 -->")));
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("pcf", "<!-- dmx encoding binary 5 format pcf 2 -->")));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("mp3", "ID3")));
 
 	mult = new Vpk::MultipartMagic("phy");
-	const char magic[] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-	mult->put(0, magic, sizeof(magic));
+	const char phy_magic[] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	mult->put(0, phy_magic, sizeof(phy_magic));
 	mult->put(20, "VPHY");
 	magics.push_back(Vpk::MagicPtr(mult));
 		
