@@ -28,7 +28,7 @@
 #include <boost/filesystem/operations.hpp>
 
 namespace Vpk {
-	// a simple binary-only FileIO based on C's FILE* functions
+	// a simple FileIO based on C's FILE* functions
 	// this is used because errno+strerror return much more meaningful
 	// error messages than iostreams
 	//
@@ -84,7 +84,7 @@ namespace Vpk {
 		void rewind();
 		off_t tell();
 		size_t size() const;
-		size_t buffered() const;
+		bool seekable() const;
 
 		void flush();
 		void sync();
