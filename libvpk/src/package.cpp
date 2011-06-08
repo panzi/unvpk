@@ -36,54 +36,50 @@
 namespace fs   = boost::filesystem;
 namespace algo = boost::algorithm;
 
-void Vpk::Package::read(const boost::filesystem::path &path) {
+void Vpk::Package::read(const fs::path &path) {
 	FileIO io(path, "rb");
 	read(path, io);
 }
 
-void Vpk::Package::read(const boost::filesystem::path &path, FileIO &io) {
-	std::string filename(path.filename());
+void Vpk::Package::read(const fs::path &path, FileIO &io) {
+	fs::path abspath = fs::system_complete(path);
+	m_dirfile = abspath.filename();
 		
-	if (filename.size() < 8 || tolower(filename.substr(filename.size()-8)) != "_dir.vpk") {
+	if (m_dirfile.size() < 8 || tolower(m_dirfile.substr(m_dirfile.size()-8)) != "_dir.vpk") {
 		Exception exc((boost::format("file does not end in \"_dir.vpk\": \"%s\"")
-			% path.string()).str());
-		if (m_handler) {
-			if (m_handler->archiveerror(exc, path.string())) {
-				throw exc;
-			}
-			setName(filename);
-		}
-		else {
+			% abspath.string()).str());
+		if (archiveerror(exc, abspath.string())) {
 			throw exc;
 		}
+		setName(m_dirfile);
 	}
 	else {
-		setName(filename.substr(0, filename.size()-8));
+		setName(m_dirfile.substr(0, m_dirfile.size()-8));
 	}
-	m_srcdir = fs::system_complete(path).parent_path().string();
+	m_srcdir = abspath.parent_path().string();
 	
 	read(io);
 }
 
-void Vpk::Package::read(const std::string &srcdir, const std::string &name, FileIO &io) {
-	m_srcdir = fs::system_complete(srcdir).string();
-	setName(name);
-	read(io);
-}
-
 void Vpk::Package::read(FileIO &io) {
+	size_t headerSize = 0;
+	unsigned int indexSize = 0;
 	if (io.readLU32() != 0x55AA1234) {
 		io.seek(-4, FileIO::CUR);
 	}
 	else {
-		unsigned int version      =    io.readLU32();
-		/* unsigned int indexSize = */ io.readLU32();
+		m_version  = io.readLU32();
+		indexSize  = io.readLU32();
+		headerSize = io.tell();
+		m_dataoff  = indexSize + headerSize;
 
-		if (version != 1) {
+		if (m_version != 1) {
 			throw FileFormatError((boost::format("unsupported VPK version: %u")
-				% version).str());
+				% m_version).str());
 		}
 	}
+
+	std::vector<File*> dirfiles;
 
 	// types
 	for (;;) {
@@ -97,8 +93,24 @@ void Vpk::Package::read(FileIO &io) {
 			io.readAsciiZ(path);
 			if (path.empty()) break;
 
-			mkpath(path).read(io, path, type);
+			mkpath(path).read(io, path, type, dirfiles);
 		}
+	}
+
+	if (m_version == 0) {
+		m_dataoff = io.tell();
+	}
+	else if (io.tell() != m_dataoff) {
+		Exception exc(
+			(boost::format("missmatch between header index size (%u) and real index size (%u)")
+			% indexSize % (io.tell() - headerSize)).str());
+		if (archiveerror(exc, (fs::path(m_srcdir) / (name() + "_dir.vpk")).string())) {
+			throw exc;
+		}
+	}
+
+	for (std::vector<File*>::iterator i = dirfiles.begin(); i != dirfiles.end(); ++ i) {
+		(*i)->offset += m_dataoff;
 	}
 }
 
@@ -261,7 +273,12 @@ bool Vpk::Package::error(const std::exception &exc, const std::string &path, Err
 }
 
 std::string Vpk::Package::archiveName(uint16_t index) const {
-	return (boost::format("%s_%03d.vpk") % name() % index).str();
+	if (index == 0x7fff) {
+		return m_dirfile;
+	}
+	else {
+		return (boost::format("%s_%03d.vpk") % name() % index).str();
+	}
 }
 
 boost::filesystem::path Vpk::Package::archivePath(uint16_t index) const {

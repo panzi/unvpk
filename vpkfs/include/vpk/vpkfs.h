@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
 
 #include <fuse.h>
 
@@ -63,7 +64,7 @@ namespace Vpk {
 	private:
 		void statfs(const Node *node);
 
-		typedef std::vector<int> Archives;
+		typedef boost::unordered_map<uint16_t,int> Archives;
 		typedef boost::unordered_set<uint16_t> Indices;
 
 		FuseArgs         m_args;

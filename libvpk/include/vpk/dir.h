@@ -20,11 +20,14 @@
 #define VPK_DIR_H
 
 #include <string>
+#include <vector>
 
 #include <vpk/node.h>
 #include <vpk/file_io.h>
 
 namespace Vpk {
+	class File;
+
 	class Dir : public Node {
 	public:
 		typedef Nodes::iterator iterator;
@@ -33,7 +36,7 @@ namespace Vpk {
 		Dir(const std::string &name) : Node(name), m_subdirs(0) {}
 
 		Type type() const { return Node::DIR; }
-		void read(FileIO &io, const std::string &path, const std::string &type);
+		void read(FileIO &io, const std::string &path, const std::string &type, std::vector<File*> &dirfiles);
 
 		const Nodes &nodes() const { return m_nodes; }
 		const Node *node(const std::string &name) const;

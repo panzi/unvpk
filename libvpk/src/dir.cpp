@@ -21,7 +21,7 @@
 #include <vpk/dir.h>
 #include <vpk/file.h>
 
-void Vpk::Dir::read(FileIO &io, const std::string &path, const std::string &type) {
+void Vpk::Dir::read(FileIO &io, const std::string &path, const std::string &type, std::vector<File*> &dirfiles) {
 	// files
 	for (;;) {
 		std::string name;
@@ -37,7 +37,7 @@ void Vpk::Dir::read(FileIO &io, const std::string &path, const std::string &type
 		}
 		File *file = new File(name);
 		m_nodes[name] = NodePtr(file);
-		file->read(io);
+		file->read(io, dirfiles);
 	}
 }
 

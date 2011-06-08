@@ -21,7 +21,7 @@
 #include <vpk/file.h>
 #include <vpk/file_format_error.h>
 
-void Vpk::File::read(FileIO &io) {
+void Vpk::File::read(FileIO &io, std::vector<File*> &dirfiles) {
 	crc32 = io.readLU32();
 	unsigned int length = io.readLU16();
 	index = io.readLU16();
@@ -36,5 +36,9 @@ void Vpk::File::read(FileIO &io) {
 	if (length > 0) {
 		preload.resize(length, 0);
 		io.read(&preload[0], length);
+	}
+
+	if (index == 0x7fff) {
+		dirfiles.push_back(this);
 	}
 }

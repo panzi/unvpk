@@ -43,7 +43,7 @@ namespace Vpk {
 			preload(0, 0) {}
 
 		Type type() const { return Node::FILE; }
-		void read(FileIO &io);
+		void read(FileIO &io, std::vector<File*> &dirfiles);
 
 		uint32_t crc32;
 		uint32_t size;

@@ -291,15 +291,7 @@ int Vpk::Vpkfs::run() {
 
 	m_files = 0;
 	statfs(&m_package);
-	int archspace = 0;
-	for (Indices::const_iterator i = m_indices.begin(); i != m_indices.end(); ++ i) {
-		int needspace = *i + 1;
-		if (needspace > archspace) {
-			archspace = needspace;
-		}
-	}
-	
-	m_archives.resize(archspace, -1);
+
 	for (Indices::const_iterator i = m_indices.begin(); i != m_indices.end(); ++ i) {
 		uint16_t index = *i;
 		fs::path archivePath(m_package.archivePath(index));
@@ -592,16 +584,16 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 }
 
 void Vpk::Vpkfs::clear() {
-	for (size_t i = 0, n = m_archives.size(); i < n; ++ i) {
-		int fd = m_archives[i];
+	for (Archives::iterator i = m_archives.begin(); i != m_archives.end(); ++ i) {
+		int fd = i->second;
 		if (fd >= 0 && ::close(fd) != 0) {
 			int errnum = errno;
 			std::cerr
 				<< "*** error closing archive \""
-				<< m_package.archivePath(i) << "\": "
+				<< m_package.archivePath(i->first) << "\": "
 				<< strerror(errnum) << std::endl;
 		}
-		m_archives[i] = -1;
+		m_archives[i->first] = -1;
 	}
 	m_archives.clear();
 	m_indices.clear();

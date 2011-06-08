@@ -39,7 +39,7 @@ namespace Vpk {
 	class Package : public Dir {
 	public:
 		Package(Handler *handler = 0) :
-			Dir(""), m_srcdir("."), m_handler(handler) {}
+			Dir(""), m_version(0), m_dataoff(0), m_srcdir("."), m_handler(handler) {}
 
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
@@ -47,14 +47,16 @@ namespace Vpk {
 		void read(const char *path, FileIO &io) { read(boost::filesystem::path(path), io); }
 		void read(const std::string &path, FileIO &io) { read(boost::filesystem::path(path), io); }
 		void read(const boost::filesystem::path &path, FileIO &io);
-		void read(const std::string &srcdir, const std::string &name, FileIO &io);
 
 		Dir &mkpath(const std::string &path) { return mkpath(path.c_str()); }
 		Dir &mkpath(const char *path);
 
 		std::string             archiveName(uint16_t index) const;
 		boost::filesystem::path archivePath(uint16_t index) const;
+		unsigned int version() const { return m_version; }
+		unsigned int dataoff() const { return m_dataoff; }
 		const std::string &srcdir() const { return m_srcdir; }
+		const std::string &dirfile() const { return m_dirfile; }
 		Node *get(const std::string &path) { return get(path.c_str()); }
 		Node *get(const char *path);
 		void setHandler(Handler *handler) { m_handler = handler; }
@@ -89,8 +91,11 @@ namespace Vpk {
 		bool error(const std::string &msg, const std::string &path, ErrorMethod handler) const;
 		bool error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
 
-		std::string m_srcdir;
-		Handler    *m_handler;
+		unsigned int m_version;
+		unsigned int m_dataoff;
+		std::string  m_srcdir;
+		std::string  m_dirfile;
+		Handler     *m_handler;
 	};
 }
 

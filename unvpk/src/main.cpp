@@ -142,15 +142,13 @@ static void coverage(const Dir &dir, Coverages &covs) {
 }
 
 static void coverage(
-		const fs::path &archindex,
-		off_t dirPos,
 		const Package &package,
 		bool dump,
 		const fs::path &destdir,
 		bool humanreadable) {
 	Coverages covs;
 	
-	covs[-1].add(0, dirPos);
+	covs[0x7fff].add(0, package.dataoff());
 
 	std::string prefix = tolower(package.name());
 	prefix += '_';
@@ -180,18 +178,9 @@ static void coverage(
 	const size_t magicSize = Magic::maxSize();
 	std::vector<char> magic(magicSize, 0);
 	for (Coverages::const_iterator i = covs.begin(); i != covs.end(); ++ i) {
-		std::string archive;
-		size_t size;
-
-		if (i->first == -1) {
-			size = fs::file_size(archindex);
-			archive = archindex.filename();
-		}
-		else {
-			fs::path path = package.archivePath(i->first);
-			size = fs::file_size(path);
-			archive = path.filename();
-		}
+		fs::path path = package.archivePath(i->first);
+		std::string archive = path.filename();
+		size_t size = fs::file_size(path);
 
 		total += size;
 		std::string sizeStr = humanreadable ?
@@ -396,17 +385,14 @@ int main(int argc, char *argv[]) {
 	Package package(&handler);
 
 	try {
-		FileIO io(archive);
-		package.read(archive, io);
-		off_t pos = io.tell();
-		io.close();
+		package.read(archive);
 
 		if (!filter.empty()) {
 			package.filter(filter);
 		}
 
 		if (coverage || dump) {
-			::coverage(archive, pos, package, dump, directory, humanreadable);
+			::coverage(package, dump, directory, humanreadable);
 		}
 		else if (list) {
 			::list(package, humanreadable, sorting);
