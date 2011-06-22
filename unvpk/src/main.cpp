@@ -57,7 +57,7 @@ static void usage(const po::options_description &desc) {
 		"(c) 2011 Mathias Panzenböck\n";
 }
 
-static void list(
+static void printListing(
 		const Nodes &nodes,
 		const std::vector<std::string> &prefix,
 		List &lst,
@@ -69,7 +69,7 @@ static void list(
 		std::vector<std::string> path(prefix);
 		path.push_back(node->name());
 		if (node->type() == Node::DIR) {
-			list(((const Dir*) node)->nodes(), path, lst, files, dirs, sumsize);
+			printListing(((const Dir*) node)->nodes(), path, lst, files, dirs, sumsize);
 			++ dirs;
 		}
 		else {
@@ -92,11 +92,11 @@ static void fillTable(const List &lst, ConsoleTable &table, SizeFormatter szfmt)
 	}
 }
 
-static void list(const Package &package, bool humanreadable, const SortKeys &sorting) {
+static void printListing(const Package &package, bool humanreadable, const SortKeys &sorting) {
 	List lst;
 	size_t files = 0, dirs = 0, sumsize = 0;
 
-	list(package.nodes(), std::vector<std::string>(), lst, files, dirs, sumsize);
+	printListing(package.nodes(), std::vector<std::string>(), lst, files, dirs, sumsize);
 
 	if (!sorting.empty()) {
 		Sorter sorter(sorting);
@@ -395,7 +395,7 @@ int main(int argc, char *argv[]) {
 			::coverage(package, dump, directory, humanreadable);
 		}
 		else if (list) {
-			::list(package, humanreadable, sorting);
+			printListing(package, humanreadable, sorting);
 		}
 		else if (xcheck) {
 			package.extract(directory, true);
