@@ -85,6 +85,12 @@ static size_t bytes(size_t size) {
 	return size;
 }
 
+static std::string sizeToString(size_t size, bool humanreadable) {
+	return humanreadable ?
+		Coverage::humanReadableSize(size) :
+		boost::lexical_cast<std::string>(size);
+}
+
 template<typename SizeFormatter>
 static void fillTable(const List &lst, ConsoleTable &table, SizeFormatter szfmt) {
 	for (List::const_iterator i = lst.begin(); i != lst.end(); ++ i) {
@@ -183,9 +189,7 @@ static void coverage(
 		size_t size = fs::file_size(path);
 
 		total += size;
-		std::string sizeStr = humanreadable ?
-			Coverage::humanReadableSize(size) :
-			boost::lexical_cast<std::string>(size);
+		std::string sizeStr = sizeToString(size, humanreadable);
 
 		const Coverage &covered = i->second;
 		Coverage missing = covered.invert(size);
@@ -196,14 +200,10 @@ static void coverage(
 			continue;
 
 		uncovered += missingSize;
-		std::string missingSizeStr = humanreadable ?
-			Coverage::humanReadableSize(missingSize) :
-			boost::lexical_cast<std::string>(missingSize);
+		std::string missingSizeStr = sizeToString(missingSize, humanreadable);
 		
 		size_t coveredSize = covered.coverage();
-		std::string coveredSizeStr = humanreadable ?
-			Coverage::humanReadableSize(coveredSize) :
-			boost::lexical_cast<std::string>(coveredSize);
+		std::string coveredSizeStr = sizeToString(coveredSize, humanreadable);
 
 		std::cout
 			<< (boost::format(
@@ -228,9 +228,7 @@ static void coverage(
 
 				std::string type = Magic::extensionOf(&magic[0], count);
 				std::string filename = (boost::format("%s_%lu_%lu.%s") % prefix % i->first % i->second % type).str();
-				std::string sizeStr = humanreadable ?
-					Coverage::humanReadableSize(i->second) :
-					boost::lexical_cast<std::string>(i->second);
+				std::string sizeStr = sizeToString(i->second, humanreadable);
 				std::cout << "Dumping " << sizeStr << " to \"" << filename << "\"\n";
 
 				FileIO out(filename, "wb");
@@ -243,18 +241,11 @@ static void coverage(
 		}
 	}
 
-	std::string totalStr = humanreadable ?
-		Coverage::humanReadableSize(total) :
-		boost::lexical_cast<std::string>(total);
+	std::string totalStr = sizeToString(total, humanreadable);
 
 	size_t covered = total - uncovered;
-	std::string coveredStr = humanreadable ?
-		Coverage::humanReadableSize(covered) :
-		boost::lexical_cast<std::string>(covered);
-
-	std::string uncoveredStr = humanreadable ?
-		Coverage::humanReadableSize(uncovered) :
-		boost::lexical_cast<std::string>(uncovered);
+	std::string coveredStr = sizeToString(covered, humanreadable);
+	std::string uncoveredStr = sizeToString(uncovered, humanreadable);
 
 	std::cout
 		<< (boost::format(
