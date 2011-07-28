@@ -85,6 +85,6 @@ static Vpk::Magics buildMagics() {
 	magics.push_back(Vpk::MagicPtr(mult));
 	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("ogg", "OggS")));
 
-	// missing: indistnguishable plain text formats: res, vcd, vmt
+	// missing: indistinguishable plain text formats: res, vcd, vmt
 	return magics;
 }
