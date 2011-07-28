@@ -83,7 +83,8 @@ static Vpk::Magics buildMagics() {
 	mult->put(0, phy_magic, sizeof(phy_magic));
 	mult->put(20, "VPHY");
 	magics.push_back(Vpk::MagicPtr(mult));
-		
+	magics.push_back(Vpk::MagicPtr(new Vpk::SimpleMagic("ogg", "OggS")));
+
 	// missing: indistnguishable plain text formats: res, vcd, vmt
 	return magics;
 }
