@@ -43,7 +43,7 @@ void Vpk::Package::read(const fs::path &path) {
 
 void Vpk::Package::read(const fs::path &path, FileIO &io) {
 	fs::path abspath = fs::system_complete(path);
-	m_dirfile = abspath.filename();
+	m_dirfile = abspath.filename().string();
 		
 	if (m_dirfile.size() < 8 || tolower(m_dirfile.substr(m_dirfile.size()-8)) != "_dir.vpk") {
 		Exception exc((boost::format("file does not end in \"_dir.vpk\": \"%s\"")

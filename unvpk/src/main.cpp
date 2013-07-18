@@ -159,7 +159,7 @@ static void coverage(
 	std::string prefix = tolower(package.name());
 	prefix += '_';
 	for (fs::directory_iterator i = fs::directory_iterator(package.srcdir()), end; i != end; ++ i) {
-		std::string name = tolower(i->path().filename());
+		std::string name = tolower(i->path().filename().string());
 
 		if (boost::starts_with(name, prefix) && boost::ends_with(name, ".vpk")) {
 			std::string digits(name, prefix.size(), name.size() - prefix.size() - 4);
@@ -185,7 +185,7 @@ static void coverage(
 	std::vector<char> magic(magicSize, 0);
 	for (Coverages::const_iterator i = covs.begin(); i != covs.end(); ++ i) {
 		fs::path path = package.archivePath(i->first);
-		std::string archive = path.filename();
+		std::string archive = path.filename().string();
 		size_t size = fs::file_size(path);
 
 		total += size;
