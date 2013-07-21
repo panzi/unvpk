@@ -490,6 +490,7 @@ int Vpk::Vpkfs::read_buf(const char *, struct fuse_bufvec **bufp,
 			bufvec->count        = 2;
 			bufvec->buf[0].size  = count;
 			bufvec->buf[0].mem   = buf;
+			bufvec->buf[0].fd    = -1;
 			bufvec->buf[1].size  = rest;
 			bufvec->buf[1].flags = (enum fuse_buf_flags)(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
 			bufvec->buf[1].fd    = m_archives[file->index];
@@ -506,12 +507,13 @@ int Vpk::Vpkfs::read_buf(const char *, struct fuse_bufvec **bufp,
 			bufvec->count       = 1;
 			bufvec->buf[0].size = count;
 			bufvec->buf[0].mem  = buf;
+			bufvec->buf[0].fd   = -1;
 		}
 	}
 	else {
 		bufvec = (struct fuse_bufvec*)calloc(1, sizeof(struct fuse_bufvec));
 		if (!bufvec) return -ENOMEM;
-		bufvec->count       = 1;
+		bufvec->count        = 1;
 		bufvec->buf[0].size  = count = std::min(size, fileSize - offset);
 		bufvec->buf[0].flags = (enum fuse_buf_flags)(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
 		bufvec->buf[0].fd    = m_archives[file->index];
