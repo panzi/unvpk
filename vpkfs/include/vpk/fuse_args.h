@@ -67,7 +67,7 @@ namespace Vpk {
 		}
 	
 		void add_arg   (const std::string &arg) { add_arg(arg.c_str()); }
-		void insert_arg(const std::string &arg) { insert_arg(arg.c_str()); }
+		void insert_arg(int pos, const std::string &arg) { insert_arg(pos, arg.c_str()); }
 	
 		int argc() const { return m_args.argc; }
 		char const* const* argv() const { return m_args.argv; }

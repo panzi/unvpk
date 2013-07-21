@@ -11,6 +11,12 @@ find_package(PkgConfig)
 pkg_check_modules(FUSE fuse REQUIRED)
 add_definitions(${FUSE_CFLAGS_OTHER})
 
+if(FUSE_VERSION VERSION_LESS 2.9)
+	add_definitions("-DFUSE_USE_VERSION=26")
+else()
+	add_definitions("-DFUSE_USE_VERSION=29")
+endif()
+
 include_directories("../libvpk/include" "include")
 
 add_executable(vpkfs

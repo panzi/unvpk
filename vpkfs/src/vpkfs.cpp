@@ -17,8 +17,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define FUSE_USE_VERSION  26
-
 #include <fuse.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -204,6 +202,14 @@ static int vpk_read(const char *path, char *buf, size_t size, off_t offset,
 		path, buf, size, offset, fi);
 }
 
+#if FUSE_USE_VERSION >= 29
+static int vpk_read_buf(const char *path, struct fuse_bufvec **bufp,
+                        size_t size, off_t offset, struct fuse_file_info *fi) {
+	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->read_buf(
+		path, bufp, size, offset, fi);
+}
+#endif
+
 static int vpk_statfs(const char *path, struct statvfs *stbuf) {
 	return ((Vpk::Vpkfs*) fuse_get_context()->private_data)->statfs(
 		path, stbuf);
@@ -220,48 +226,57 @@ static int vpk_getxattr(const char *path, const char *name, char *buf, size_t si
 }
 
 static struct fuse_operations vpkfuse_operations = {
-	/* getattr          */ vpk_getattr,
-	/* readlink         */ 0,
-	/* getdir           */ 0,
-	/* mknod            */ 0,
-	/* mkdir            */ 0,
-	/* unlink           */ 0,
-	/* rmdir            */ 0,
-	/* symlink          */ 0,
-	/* rename           */ 0,
-	/* link             */ 0,
-	/* chmod            */ 0,
-	/* chown            */ 0,
-	/* truncate         */ 0,
-	/* utime            */ 0,
-	/* open             */ vpk_open,
-	/* read             */ vpk_read,
-	/* write            */ 0,
-	/* statfs           */ vpk_statfs,
-	/* flush            */ 0,
-	/* release          */ 0,
-	/* fsync            */ 0,
-	/* setxattr         */ 0,
-	/* getxattr         */ vpk_getxattr,
-	/* listxattr        */ vpk_listxattr,
-	/* removexattr      */ 0,
-	/* opendir          */ vpk_opendir,
-	/* readdir          */ vpk_readdir,
-	/* releasedir       */ 0,
-	/* fsyncdir         */ 0,
-	/* init             */ 0,
-	/* destroy          */ 0,
-	/* access           */ 0,
-	/* create           */ 0,
-	/* ftruncate        */ 0,
-	/* fgetattr         */ 0,
-	/* lock             */ 0,
-	/* utimens          */ 0,
-	/* bmap             */ 0,
-	/* flag_nullpath_ok */ 1,
-	/* flag_reserved    */ 0,
-	/* ioctl            */ 0,
-	/* poll             */ 0
+	/* getattr            */ vpk_getattr,
+	/* readlink           */ 0,
+	/* getdir             */ 0,
+	/* mknod              */ 0,
+	/* mkdir              */ 0,
+	/* unlink             */ 0,
+	/* rmdir              */ 0,
+	/* symlink            */ 0,
+	/* rename             */ 0,
+	/* link               */ 0,
+	/* chmod              */ 0,
+	/* chown              */ 0,
+	/* truncate           */ 0,
+	/* utime              */ 0,
+	/* open               */ vpk_open,
+	/* read               */ vpk_read,
+	/* write              */ 0,
+	/* statfs             */ vpk_statfs,
+	/* flush              */ 0,
+	/* release            */ 0,
+	/* fsync              */ 0,
+	/* setxattr           */ 0,
+	/* getxattr           */ vpk_getxattr,
+	/* listxattr          */ vpk_listxattr,
+	/* removexattr        */ 0,
+	/* opendir            */ vpk_opendir,
+	/* readdir            */ vpk_readdir,
+	/* releasedir         */ 0,
+	/* fsyncdir           */ 0,
+	/* init               */ 0,
+	/* destroy            */ 0,
+	/* access             */ 0,
+	/* create             */ 0,
+	/* ftruncate          */ 0,
+	/* fgetattr           */ 0,
+	/* lock               */ 0,
+	/* utimens            */ 0,
+	/* bmap               */ 0,
+	/* flag_nullpath_ok   */ 1,
+	/* flag_nopath        */ 1,
+	/* flag_utime_omit_ok */ 1,
+	/* flag_reserved      */ 0,
+	/* ioctl              */ 0,
+	/* poll               */ 0,
+
+#if FUSE_USE_VERSION >= 29
+	/* write_buf          */ 0,
+	/* read_buf           */ vpk_read_buf,
+	/* flock              */ 0,
+	/* fallocate          */ 0,
+#endif
 };
 
 void Vpk::Vpkfs::statfs(const Node *node) {
@@ -417,7 +432,7 @@ int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
 	if (offset < 0) return -EINVAL;
 
 	File *file = (File *) fi->fh;
-	
+
 	size_t preloadSize = file->preload.size();
 	size_t fileSize = preloadSize + file->size;
 
@@ -443,6 +458,70 @@ int Vpk::Vpkfs::read(const char *, char *buf, size_t size, off_t offset,
 
 	return count;
 }
+
+#if FUSE_USE_VERSION >= 29
+int Vpk::Vpkfs::read_buf(const char *, struct fuse_bufvec **bufp,
+             size_t size, off_t offset, struct fuse_file_info *fi) {
+	if (offset < 0) return -EINVAL;
+
+	File *file = (File *) fi->fh;
+	struct fuse_bufvec *bufvec = NULL;
+
+	size_t preloadSize = file->preload.size();
+	size_t fileSize = preloadSize + file->size;
+
+	if ((size_t)offset >= fileSize) return 0;
+
+	size_t count = 0;
+	if ((size_t)offset < preloadSize) {
+		count = std::min(size, preloadSize - offset);
+		char *buf = (char *)malloc(count);
+		if (!buf) return -ENOMEM;
+		memcpy(buf, &file->preload[offset], count);
+
+		size_t rest = std::min(size - count, fileSize - offset - count);
+		if (rest) {
+			bufvec = (struct fuse_bufvec*)calloc(1,
+				sizeof(struct fuse_bufvec) + sizeof(struct fuse_buf));
+			if (!bufvec) {
+				free(buf);
+				return -ENOMEM;
+			}
+			bufvec->count        = 2;
+			bufvec->buf[0].size  = count;
+			bufvec->buf[0].mem   = buf;
+			bufvec->buf[1].size  = rest;
+			bufvec->buf[1].flags = (enum fuse_buf_flags)(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
+			bufvec->buf[1].fd    = m_archives[file->index];
+			bufvec->buf[1].pos   = file->offset + (offset + count - preloadSize);
+
+			count += rest;
+		}
+		else {
+			bufvec = (struct fuse_bufvec*)calloc(1, sizeof(struct fuse_bufvec));
+			if (!bufvec) {
+				free(buf);
+				return -ENOMEM;
+			}
+			bufvec->count       = 1;
+			bufvec->buf[0].size = count;
+			bufvec->buf[0].mem  = buf;
+		}
+	}
+	else {
+		bufvec = (struct fuse_bufvec*)calloc(1, sizeof(struct fuse_bufvec));
+		if (!bufvec) return -ENOMEM;
+		bufvec->count       = 1;
+		bufvec->buf[0].size  = count = std::min(size, fileSize - offset);
+		bufvec->buf[0].flags = (enum fuse_buf_flags)(FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK);
+		bufvec->buf[0].fd    = m_archives[file->index];
+		bufvec->buf[0].pos   = file->offset + (offset - preloadSize);
+	}
+
+	*bufp = bufvec;
+	return count;
+}
+#endif
 
 int Vpk::Vpkfs::statfs(const char *, struct statvfs *stbuf) {
 	struct stat archst;
