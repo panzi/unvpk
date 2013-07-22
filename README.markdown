@@ -50,7 +50,7 @@ Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 	This filesystem is read-only and only supports blocking operations.
 	
 	Options:
-		-o opt,[opt...]        mount options
+		-o opt,[opt...]        mount options (see: man fuse)
 		-h   --help            print help
 		-v   --version         print version
 		-d   -o debug          enable debug output (implies -f)

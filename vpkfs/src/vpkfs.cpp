@@ -81,7 +81,7 @@ void usage(const char *binary) {
 		"This filesystem is read-only and only supports blocking operations.\n"
 		"\n"
 		"Options:\n"
-		"    -o opt,[opt...]        mount options\n"
+		"    -o opt,[opt...]        mount options (see: man fuse)\n"
 		"    -h   --help            print help\n"
 		"    -v   --version         print version\n"
 		"    -d   -o debug          enable debug output (implies -f)\n"
