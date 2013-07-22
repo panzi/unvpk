@@ -422,6 +422,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	if ((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
 
+	fi->keep_cache = 1;
 	fi->fh = (uint64_t) (File *) node;
 
 	return 0;
