@@ -419,7 +419,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 	if (node->type() == Node::DIR)
 		return -EISDIR;
 
-	if((fi->flags & 3) != O_RDONLY)
+	if ((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
 
 	fi->fh = (uint64_t) (File *) node;
@@ -470,12 +470,15 @@ int Vpk::Vpkfs::read_buf(const char *, struct fuse_bufvec **bufp,
 	size_t preloadSize = file->preload.size();
 	size_t fileSize = preloadSize + file->size;
 
-	if ((size_t)offset >= fileSize) return 0;
-
 	size_t count = 0;
-	if ((size_t)offset < preloadSize) {
+	if ((size_t)offset >= fileSize) {
+		bufvec = (struct fuse_bufvec*)calloc(1, sizeof(struct fuse_bufvec));
+		if (!bufvec) return -ENOMEM;
+		bufvec->buf[0].fd = -1;
+	}
+	else if ((size_t)offset < preloadSize) {
 		count = std::min(size, preloadSize - offset);
-		char *buf = (char *)malloc(count);
+		void *buf = malloc(count);
 		if (!buf) return -ENOMEM;
 		memcpy(buf, &file->preload[offset], count);
 
