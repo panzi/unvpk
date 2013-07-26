@@ -21,9 +21,9 @@
 
 #include <iostream>
 #include <string>
-#include <map>
 
 #include <boost/shared_ptr.hpp>
+#include <boost/unordered_map.hpp>
 
 namespace Vpk {
 	class Node {
@@ -45,8 +45,8 @@ namespace Vpk {
 		std::string m_name;
 	};
 
-	typedef boost::shared_ptr<Node>       NodePtr;
-	typedef std::map<std::string,NodePtr> Nodes;
+	typedef boost::shared_ptr<Node>                   NodePtr;
+	typedef boost::unordered_map<std::string,NodePtr> Nodes;
 }
 
 #endif
