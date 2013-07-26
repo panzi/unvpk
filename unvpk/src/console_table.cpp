@@ -138,8 +138,13 @@ void Vpk::ConsoleTable::print(std::ostream &os) const {
 	for (Table::const_iterator i = m_body.begin(); i != m_body.end(); ++ i) {
 		const Row &row = *i;
 		for (size_t j = 0, n = row.size(); j < n; ++ j) {
-			align(os, row[j], colsizes[j], alignments[j]);
-			if (j + 1 < n) os.put(' ');
+			if (j + 1 < n) {
+				align(os, row[j], colsizes[j], alignments[j]);
+				os.put(' ');
+			}
+			else {
+				align(os, row[j], row[j].size(), alignments[j]);
+			}
 		}
 		os.put('\n');
 	}

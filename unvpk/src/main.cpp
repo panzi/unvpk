@@ -179,6 +179,10 @@ static void coverage(
 		create_path(destdir);
 	}
 
+	ConsoleTable statsTbl;
+	statsTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT);
+	statsTbl.row("File", "Size", "Covered", "%", "Missing", "Missing Areas");
+
 	size_t uncovered = 0;
 	size_t total = 0;
 	const size_t magicSize = Magic::maxSize();
@@ -205,16 +209,9 @@ static void coverage(
 		size_t coveredSize = covered.coverage();
 		std::string coveredSizeStr = sizeToString(coveredSize, humanreadable);
 
-		std::cout
-			<< (boost::format(
-				"File: %s\n"
-				"Size: %s\n"
-				"Covered: %s (%.0lf%%)\n"
-				"Missing: %s\n"
-				"Missing Areas:\n"
-				"\t%s\n\n")
-				% archive % sizeStr % coveredSizeStr % (covered.coverage() * (double)100 / size)
-				% missingSizeStr % missing.str(humanreadable));
+		statsTbl.row(archive, sizeStr, coveredSizeStr,
+			boost::format("%.0lf%%") % (covered.coverage() * (double)100 / size),
+			missingSizeStr, missing.str(humanreadable));
 
 		if (dump) {
 			std::string prefix = (destdir / archive).string();
@@ -247,8 +244,10 @@ static void coverage(
 	std::string coveredStr = sizeToString(covered, humanreadable);
 	std::string uncoveredStr = sizeToString(uncovered, humanreadable);
 
+	statsTbl.print(std::cout);
+
 	std::cout
-		<< (boost::format(
+		<< (boost::format("\n"
 			"Total Size: %s\n"
 			"Total Covered: %s (%.0lf%%)\n"
 			"Total Missing: %s\n")
