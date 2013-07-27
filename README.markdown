@@ -104,16 +104,91 @@ To my knowlege there are currently (as of Portal 2) two versions of the VPK
 file format. The only difference is that one has a file magic, version
 information and an explicitely given index size, and the other (older) don't.
 
-All values are stored in **little endian**. Offset and Size are given in
+
+	┌─────────────────────────────────────┐
+	│                                     │
+	│ Header (Optional)                   │
+	│                                     │
+	│   Magic (0x55AA1234)                │
+	│   Version (1)                       │
+	│   Index Size                        │
+	│                                     │
+	├─────────────────────────────────────┤
+	│                                     │
+	│ Index                               │
+	│                                     │
+	│ ┌─────────────────────────────────┐ │
+	│ │                                 │ │
+	│ │ File Type                       │ │
+	│ │                                 │ │
+	│ │   Name                          │ │
+	│ │                                 │ │
+	│ │ ┌─────────────────────────────┐ │ │
+	│ │ │                             │ │ │
+	│ │ │ Directory                   │ │ │
+	│ │ │                             │ │ │
+	│ │ │   Path                      │ │ │
+	│ │ │                             │ │ │
+	│ │ │ ┌─────────────────────────┐ │ │ │
+	│ │ │ │                         │ │ │ │
+	│ │ │ │ File                    │ │ │ │
+	│ │ │ │                         │ │ │ │
+	│ │ │ │   CRC32                 │ │ │ │
+	│ │ │ │   Preload Size          │ │ │ │
+	│ │ │ │   Archive Index         │ │ │ │
+	│ │ │ │   Offset                │ │ │ │
+	│ │ │ │   Size                  │ │ │ │
+	│ │ │ │   Termintator (0xFFFF)  │ │ │ │
+	│ │ │ │                         │ │ │ │
+	│ │ │ ├─────────────────────────┤ │ │ │
+	│ │ │ │                         │ │ │ │
+	│ │ │ │ Preload Data            │ │ │ │
+	│ │ │ │                         │ │ │ │
+	│ │ │ └─────────────────────────┘ │ │ │
+	│ │ │                             │ │ │
+	│ │ │   ...                       │ │ │
+	│ │ │                             │ │ │
+	│ │ │   Terminator (0x00)         │ │ │
+	│ │ │                             │ │ │
+	│ │ └─────────────────────────────┘ │ │
+	│ │                                 │ │
+	│ │   ...                           │ │
+	│ │                                 │ │
+	│ │   Terminator (0x00)             │ │
+	│ │                                 │ │
+	│ └─────────────────────────────────┘ │
+	│                                     │
+	│   ...                               │
+	│                                     │
+	│   Terminator (0x00)                 │
+	│                                     │
+	├─────────────────────────────────────┤
+	│                                     │
+	│ Data                                │
+	│                                     │
+	│ ...                                 │
+	│                                     │
+	└─────────────────────────────────────┘
+
+
+#### Value Types
+All values are stored in **little endian**. Offsets and sizes are given in
 bytes.
 
-#### Types
-
-	Byte ..... a single byte
+	Byte ..... single byte
+	Bytes .... byte array of arbitrary data
+	U16 ...... unsigned 16-bit integer
 	U32 ...... unsigned 32-bit integer
 	ASCIIZ ... zero terminated ASCII string
 
-#### File header (optional)
+#### Terminators
+The terminators of the file type-, directory- and file-lists are simple
+zero-bytes. Because the first element of each of those structures are
+zero terminated ASCII strings you can write you code so, that when you
+read a zero-length name you know the list is terminated. This means that
+no file type, directory path or file name may have a zero-length.
+
+#### Header
 If the file doesn't start wit the file magic `0x55AA1234` then the index
 table directly starts at the beginning of the file.
 
@@ -126,17 +201,57 @@ table directly starts at the beginning of the file.
 Files are grouped by their type (file name extension).
 	
 	Offset  Size  Type    Description
-	[
-	     0     N  ASCIIZ  File type
-		 
-	]*
-	           1  Byte    List-Terminator: 0x00
+	
+	 [ File Type ]...
+	
+	     ?     1  Byte    terminator: 0x00
 
+#### File Type
+	Offset  Size  Type    Description
+	     0     N  ASCIIZ  file type (extension like "wav" or "res")
+	
+	 [ Directory ]...
+	
+	     ?     1  Byte    terminator: 0x00
 
+#### Directory
+
+	Offset  Size  Type    Description
+	     0     N  ASCIIZ  dir path (seperator character: '/')
+	
+	 [ File ]...
+	
+	     ?     1  Byte    terminator: 0x00
+
+#### File
+
+	Offset  Size  Type    Description
+	     0     N  ASCIIZ  file name (without extension)
+	   N+0     4  U32     crc32
+	   N+4     2  U16     preload size (PS)
+	   N+6     2  U16     archive index, 0x7FFF refers to the index file (*_dir.vpk)
+	   N+8     4  U32     offset in archive file
+	  N+12     4  U32     size of data in archive file
+	  N+16     2  U16     terminator: 0xFFFF
+	  N+18    PS  Bytes   preload data
+
+I'm actually not sure if the 0xFFFF terminator is really a terminator
+and not just padding or some kind of field that is coincidentally always
+0xFFFF in the files I have.
+
+The data of a file consists of the concatenation of the preload data
+and the data from the archive file. If the archive index is 0x7FFF the
+data is stored in the index file (`*_dir.vpk`). In this case the offset
+refers to the offset after the end of the index:
+
+	offset_in_file = header_size + index_size + offset
+
+Note that the `header_size` might be 0.
 
 ### `*_###.vpk`
 These are simple archives where the contained files are simply merged together
-in one big file. You can think of them being created like this:
+in one big file. You can think of them being created like this (if the preload
+size is always 0):
 
 	cat file1 file2 file3 > pak01_001.vpk
 
