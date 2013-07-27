@@ -104,7 +104,7 @@ To my knowlege there are currently (as of Portal 2) two versions of the VPK
 file format. The only difference is that one has a file magic, version
 information and an explicitely given index size, and the other (older) don't.
 
-	:::plain
+	:::text
 	┌─────────────────────────────────────┐
 	│                                     │
 	│ Header (Optional)                   │
