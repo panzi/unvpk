@@ -121,18 +121,19 @@ information and an explicitely given index size, and the other (older) don't.
 	│ │                                 │ │
 	│ │ File Type                       │ │
 	│ │                                 │ │
-	│ │   Name                          │ │
+	│ │   Type Name                     │ │
 	│ │                                 │ │
 	│ │ ┌─────────────────────────────┐ │ │
 	│ │ │                             │ │ │
 	│ │ │ Directory                   │ │ │
 	│ │ │                             │ │ │
-	│ │ │   Path                      │ │ │
+	│ │ │   Directory Path            │ │ │
 	│ │ │                             │ │ │
 	│ │ │ ┌─────────────────────────┐ │ │ │
 	│ │ │ │                         │ │ │ │
 	│ │ │ │ File                    │ │ │ │
 	│ │ │ │                         │ │ │ │
+	│ │ │ │   File Name             │ │ │ │
 	│ │ │ │   CRC32                 │ │ │ │
 	│ │ │ │   Preload Size          │ │ │ │
 	│ │ │ │   Archive Index         │ │ │ │
