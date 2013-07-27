@@ -12,6 +12,7 @@ Unvpk is a small command line tool for listing, checking and extracting of VPK
 archives. Such archives are used in Source engine based games like Portal 2.
 
 ### Usage
+	:::text
 	unvpk [OPTION...] ARCHIVE [FILE...]
 	
 	ARCHIVE has to be a file named "*_dir.vpk".
@@ -45,6 +46,7 @@ Vpkfs
 Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 
 ### Usage
+	:::text
 	vpkfs [OPTIONS] ARCHIVE MOUNTPOINT
 	
 	ARCHIVE has to be a file named "*_dir.vpk".
@@ -64,15 +66,18 @@ Vpkfs is a small FUSE based filesystem which allows you to mount VPK archives.
 Setup
 -----
 ### Download
+	:::text
 	wget https://bitbucket.org/panzi/unvpk/get/tip.tar.bz2 -O unvpk.tar.bz2
 	tar xvjf unvpk.tar.bz2
 	cd repos*
 
 ### Or Clone
+	:::text
 	hg clone https://bitbucket.org/panzi/unvpk
 	cd unvpk
 
 ### Build and Install
+	:::text
 	mkdir build
 	cd build
 	cmake -DCMAKE_INSTALL_PREFIX=/usr ..
@@ -80,10 +85,12 @@ Setup
 
 If you don't want to build and install unvpk replace the cmake line with:
 
+	:::text
 	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_UNVPK=OFF ..
 
 If you don't want to build and install vpkfs replace the cmake line with:
 
+	:::text
 	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_VPKFS=OFF ..
 
 Dependencies
@@ -177,6 +184,7 @@ information and an explicitely given index size, and the other (older) don't.
 All values are stored in **little endian**. Offsets and sizes are given in
 bytes.
 
+	:::text
 	Byte ..... single byte
 	Bytes .... byte array of arbitrary data
 	U16 ...... unsigned 16-bit integer
@@ -255,6 +263,7 @@ These are simple archives where the contained files are simply merged together
 in one big file. You can think of them being created like this (if the preload
 size is always 0):
 
+	:::text
 	cat file1 file2 file3 > pak01_001.vpk
 
 Notes
