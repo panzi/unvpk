@@ -34,9 +34,10 @@ archives. Such archives are used in Source engine based games like Portal 2.
 	  -x [ --xcheck ]          extract and check CRC32 sums
 	  -C [ --directory ] arg   extract files into another directory
 	  -s [ --stop ]            stop on error
-	  --coverage               coverage analysis of archive data (archive 
-	                           debugging)
-	  --dump-uncovered         dump uncovered areas into files (implies --coverage,
+	  --stats                  print some statistics and coverage analysis of 
+	                           archive data (archive debugging)
+	  -a [ --all ]             also show archives with 100% coverage in statistics
+	  --dump-uncovered         dump uncovered areas into files (implies --stats, 
 	                           archive debugging)
 
 Vpkfs

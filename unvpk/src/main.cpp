@@ -146,7 +146,7 @@ static void archive_stat(const Dir &dir, Stats &stats) {
 	}
 }
 
-static void coverage(
+static void printStats(
 		const Package &package,
 		bool dump,
 		const fs::path &destdir,
@@ -277,6 +277,7 @@ static void coverage(
 
 	ConsoleTable totalsTbl;
 	totalsTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT);
+	totalsTbl.row("Format Version:", package.version());
 	totalsTbl.row("Total Files:", files);
 	totalsTbl.row("Total Size", totalStr);
 	totalsTbl.row("Total Covered:", coveredStr, boost::format("%.0lf%%") % (covered * (double)100 / total));
@@ -313,9 +314,9 @@ int main(int argc, char *argv[]) {
 		("xcheck,x",         "extract and check CRC32 sums")
 		("directory,C",      po::value<std::string>(), "extract files into another directory")
 		("stop,s",           "stop on error")
-		("coverage",         "coverage analysis of archive data (archive debugging)")
-		("all,a",            "also show archives 100% coverage")
-		("dump-uncovered",   "dump uncovered areas into files (implies --coverage, archive debugging)");
+		("stats",            "print some statistics and coverage analysis of archive data (archive debugging)")
+		("all,a",            "also show archives with 100% coverage in statistics")
+		("dump-uncovered",   "dump uncovered areas into files (implies --stats, archive debugging)");
 
 	po::options_description hidden;
 	hidden.add_options()
@@ -349,11 +350,11 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	bool list          = vm.count("list")     > 0;
-	bool check         = vm.count("check")    > 0;
-	bool xcheck        = vm.count("xcheck")   > 0;
-	bool stop          = vm.count("stop")     > 0;
-	bool coverage      = vm.count("coverage") > 0;
+	bool list          = vm.count("list")           > 0;
+	bool check         = vm.count("check")          > 0;
+	bool xcheck        = vm.count("xcheck")         > 0;
+	bool stop          = vm.count("stop")           > 0;
+	bool stats         = vm.count("stats")          > 0;
 	bool dump          = vm.count("dump-uncovered") > 0;
 	bool humanreadable = vm.count("human-readable") > 0;
 	bool printall      = vm.count("all")            > 0;
@@ -422,8 +423,8 @@ int main(int argc, char *argv[]) {
 			package.filter(filter);
 		}
 
-		if (coverage || dump) {
-			::coverage(package, dump, directory, humanreadable, printall);
+		if (stats || dump) {
+			printStats(package, dump, directory, humanreadable, printall);
 		}
 		else if (list) {
 			printListing(package, humanreadable, sorting);
