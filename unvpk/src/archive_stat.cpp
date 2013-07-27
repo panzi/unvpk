@@ -1,6 +1,6 @@
 /**
  * unvpk - list, check and extract vpk archives
- * Copyright (C) 2011-2013  Mathias Panzenböck <grosser.meister.morti@gmx.net>
+ * Copyright (C) 2013  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,30 +16,25 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef VPK_COVERAGE_H
-#define VPK_COVERAGE_H
 
-#include <string>
-#include <map>
+#include <vpk/archive_stat.h>
 
-namespace Vpk {
-	class Coverage {
-	public:
-		typedef std::map<off_t,size_t> Slices;
-
-		size_t coverage() const;
-		const Slices &slices() const { return m_slices; }
+void Vpk::ArchiveStat::add(const File &file) {
+	size_t preload = file.preload.size();
+	size_t size = preload + file.size;
+	m_sumPreload += preload;
+	m_sumSize    += size;
+	if (m_files == 0) {
+		m_minPreload = m_maxPreload = preload;
+		m_minSize    = m_maxSize    = size;
+	}
+	else {
+		if (preload > m_maxPreload) m_maxPreload = preload;
+		if (preload < m_minPreload) m_minPreload = preload;
 		
-		void add(off_t offset, size_t size);
-		std::string str(bool humanreadable = false) const;
-		bool empty() const { return m_slices.empty(); }
-		Coverage invert(size_t filesize = 0) const;
-
-		static std::string humanReadableSize(size_t size);
-
-	private:
-		Slices m_slices;
-	};
+		if (size > m_maxSize) m_maxSize = size;
+		if (size < m_minSize) m_minSize = size;
+	}
+	++ m_files;
+	m_coverage.add(file.offset, file.size);
 }
-
-#endif

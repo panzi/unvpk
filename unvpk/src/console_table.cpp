@@ -1,6 +1,6 @@
 /**
  * unvpk - list, check and extract vpk archives
- * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
+ * Copyright (C) 2011-2013  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -91,6 +91,44 @@ void Vpk::ConsoleTable::columns(
 	addColumn(col6);
 }
 
+void Vpk::ConsoleTable::columns(
+		Alignment col1,
+		Alignment col2,
+		Alignment col3,
+		Alignment col4,
+		Alignment col5,
+		Alignment col6,
+		Alignment col7) {
+	m_alignments.clear();
+	addColumn(col1);
+	addColumn(col2);
+	addColumn(col3);
+	addColumn(col4);
+	addColumn(col5);
+	addColumn(col6);
+	addColumn(col7);
+}
+
+void Vpk::ConsoleTable::columns(
+		Alignment col1,
+		Alignment col2,
+		Alignment col3,
+		Alignment col4,
+		Alignment col5,
+		Alignment col6,
+		Alignment col7,
+		Alignment col8) {
+	m_alignments.clear();
+	addColumn(col1);
+	addColumn(col2);
+	addColumn(col3);
+	addColumn(col4);
+	addColumn(col5);
+	addColumn(col6);
+	addColumn(col7);
+	addColumn(col8);
+}
+
 void Vpk::ConsoleTable::columns(const Alignments &alignments) {
 	m_alignments = alignments;
 	if (m_alignments.size() > m_columns) {
@@ -138,12 +176,15 @@ void Vpk::ConsoleTable::print(std::ostream &os) const {
 	for (Table::const_iterator i = m_body.begin(); i != m_body.end(); ++ i) {
 		const Row &row = *i;
 		for (size_t j = 0, n = row.size(); j < n; ++ j) {
+			const std::string &cell = row[j];
+			Alignment alignment = alignments[j];
+
 			if (j + 1 < n) {
-				align(os, row[j], colsizes[j], alignments[j]);
-				os.put(' ');
+				align(os, cell, colsizes[j], alignment);
+				os << m_delim;
 			}
 			else {
-				align(os, row[j], row[j].size(), alignments[j]);
+				align(os, cell, alignment == LEFT ? cell.size() : colsizes[j], alignment);
 			}
 		}
 		os.put('\n');

@@ -1,6 +1,6 @@
 /**
  * unvpk - list, check and extract vpk archives
- * Copyright (C) 2011  Mathias Panzenböck <grosser.meister.morti@gmx.net>
+ * Copyright (C) 2011-2013  Mathias Panzenböck <grosser.meister.morti@gmx.net>
  * 
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,6 +32,7 @@
 #include <vpk/util.h>
 #include <vpk/console_handler.h>
 #include <vpk/console_table.h>
+#include <vpk/archive_stat.h>
 #include <vpk/coverage.h>
 #include <vpk/magic.h>
 #include <vpk/list_entry.h>
@@ -130,19 +131,17 @@ static void printListing(const Package &package, bool humanreadable, const SortK
 	std::cout << " total size), " << dirs << " " << (dirs == 1 ? "directory" : "directories") << "\n";
 }
 
-typedef std::map<int,Coverage> Coverages;
+typedef std::map<int,ArchiveStat> Stats;
 
-static void coverage(const Dir &dir, Coverages &covs) {
+static void archive_stat(const Dir &dir, Stats &stats) {
 	for (Dir::const_iterator i = dir.begin(); i != dir.end(); ++ i) {
 		Node *node = i->second.get();
 		if (node->type() == Node::DIR) {
-			coverage(*(Dir*) node, covs);
+			archive_stat(*(Dir*) node, stats);
 		}
 		else {
 			File *file = (File*) node;
-			if (file->size) {
-				covs[file->index].add(file->offset, file->size);
-			}
+			stats[file->index].add(*file);
 		}
 	}
 }
@@ -151,10 +150,11 @@ static void coverage(
 		const Package &package,
 		bool dump,
 		const fs::path &destdir,
-		bool humanreadable) {
-	Coverages covs;
-	
-	covs[0x7fff].add(0, package.dataoff());
+		bool humanreadable,
+		bool printall) {
+	Stats stats;
+
+	stats[0x7fff].coverage().add(0, package.dataoff());
 
 	std::string prefix = tolower(package.name());
 	prefix += '_';
@@ -166,28 +166,37 @@ static void coverage(
 			if (digits.size() >= 3) {
 				try {
 					uint16_t index = boost::lexical_cast<uint16_t>(digits);
-					covs[index];
+					stats[index];
 				}
 				catch (const boost::bad_lexical_cast&) {}
 			}
 		}
 	}
 
-	coverage(package, covs);
+	archive_stat(package, stats);
 
 	if (dump) {
 		create_path(destdir);
 	}
 
 	ConsoleTable statsTbl;
-	statsTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT);
-	statsTbl.row("File", "Size", "Covered", "%", "Missing", "Missing Areas");
+	statsTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT,
+	                 ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT,
+	                 ConsoleTable::LEFT);
+	statsTbl.row("File", "Files", "Size", "Covered", "%", "Missing", "Missing Areas");
 
+	size_t files = 0;
+	size_t minPreload = -1;
+	size_t maxPreload = 0;
+	size_t sumPreload = 0;
+	size_t minSize = -1;
+	size_t maxSize = 0;
+	size_t sumSize = 0;
 	size_t uncovered = 0;
 	size_t total = 0;
 	const size_t magicSize = Magic::maxSize();
 	std::vector<char> magic(magicSize, 0);
-	for (Coverages::const_iterator i = covs.begin(); i != covs.end(); ++ i) {
+	for (Stats::const_iterator i = stats.begin(); i != stats.end(); ++ i) {
 		fs::path path = package.archivePath(i->first);
 		std::string archive = path.filename().string();
 		size_t size = fs::file_size(path);
@@ -195,12 +204,22 @@ static void coverage(
 		total += size;
 		std::string sizeStr = sizeToString(size, humanreadable);
 
-		const Coverage &covered = i->second;
+		const ArchiveStat &archStat = i->second;
+		const Coverage &covered = archStat.coverage();
+
+		files += archStat.files();
+		if (archStat.minPreload() < minPreload) minPreload = archStat.minPreload();
+		if (archStat.maxPreload() > maxPreload) maxPreload = archStat.maxPreload();
+
+		if (archStat.minSize() < minSize) minSize = archStat.minSize();
+		if (archStat.maxSize() > maxSize) maxSize = archStat.maxSize();
+		
+		sumPreload += archStat.sumPreload();
+		sumSize += archStat.sumSize();
 		Coverage missing = covered.invert(size);
-		
 		size_t missingSize = missing.coverage();
-		
-		if (missingSize == 0)
+
+		if (!printall && missingSize == 0)
 			continue;
 
 		uncovered += missingSize;
@@ -209,7 +228,7 @@ static void coverage(
 		size_t coveredSize = covered.coverage();
 		std::string coveredSizeStr = sizeToString(coveredSize, humanreadable);
 
-		statsTbl.row(archive, sizeStr, coveredSizeStr,
+		statsTbl.row(archive, archStat.files(), sizeStr, coveredSizeStr,
 			boost::format("%.0lf%%") % (covered.coverage() * (double)100 / size),
 			missingSizeStr, missing.str(humanreadable));
 
@@ -238,22 +257,42 @@ static void coverage(
 		}
 	}
 
+	if (files == 0) {
+		minPreload = minSize = 0;
+	}
+
 	std::string totalStr = sizeToString(total, humanreadable);
 
 	size_t covered = total - uncovered;
 	std::string coveredStr = sizeToString(covered, humanreadable);
 	std::string uncoveredStr = sizeToString(uncovered, humanreadable);
 
-	statsTbl.print(std::cout);
+	std::string minPreloadStr = sizeToString(minPreload, humanreadable);
+	std::string maxPreloadStr = sizeToString(maxPreload, humanreadable);
+	std::string avgPreloadStr = sizeToString(sumPreload / files, humanreadable);
+	
+	std::string minSizeStr = sizeToString(minSize, humanreadable);
+	std::string maxSizeStr = sizeToString(maxSize, humanreadable);
+	std::string avgSizeStr = sizeToString(sumSize / files, humanreadable);
 
-	std::cout
-		<< (boost::format("\n"
-			"Total Size: %s\n"
-			"Total Covered: %s (%.0lf%%)\n"
-			"Total Missing: %s\n")
-		% totalStr
-		% coveredStr % (covered * (double)100 / total)
-		% uncoveredStr);
+	ConsoleTable totalsTbl;
+	totalsTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT);
+	totalsTbl.row("Total Files:", files);
+	totalsTbl.row("Total Size", totalStr);
+	totalsTbl.row("Total Covered:", coveredStr, boost::format("%.0lf%%") % (covered * (double)100 / total));
+	totalsTbl.row("Total Missing:", uncoveredStr);
+
+	ConsoleTable sizesTbl;
+	sizesTbl.columns(ConsoleTable::LEFT, ConsoleTable::RIGHT, ConsoleTable::RIGHT, ConsoleTable::RIGHT);
+	sizesTbl.row("", "Min", "Max", "Avg");
+	sizesTbl.row("Preload Size", minPreloadStr, maxPreloadStr, avgPreloadStr);
+	sizesTbl.row("File Size", minSizeStr, maxSizeStr, avgSizeStr);
+
+	statsTbl.print(std::cout);
+	std::cout.put('\n');
+	totalsTbl.print(std::cout);
+	std::cout.put('\n');
+	sizesTbl.print(std::cout);
 }
 
 int main(int argc, char *argv[]) {
@@ -275,6 +314,7 @@ int main(int argc, char *argv[]) {
 		("directory,C",      po::value<std::string>(), "extract files into another directory")
 		("stop,s",           "stop on error")
 		("coverage",         "coverage analysis of archive data (archive debugging)")
+		("all,a",            "also show archives 100% coverage")
 		("dump-uncovered",   "dump uncovered areas into files (implies --coverage, archive debugging)");
 
 	po::options_description hidden;
@@ -316,6 +356,7 @@ int main(int argc, char *argv[]) {
 	bool coverage      = vm.count("coverage") > 0;
 	bool dump          = vm.count("dump-uncovered") > 0;
 	bool humanreadable = vm.count("human-readable") > 0;
+	bool printall      = vm.count("all")            > 0;
 
 	std::string directory = vm.count("directory") > 0 ? vm["directory"].as<std::string>() : std::string(".");
 	std::string archive   = vm.count("archive")   > 0 ? vm["archive"].as<std::string>()   : std::string("-");
@@ -382,7 +423,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (coverage || dump) {
-			::coverage(package, dump, directory, humanreadable);
+			::coverage(package, dump, directory, humanreadable, printall);
 		}
 		else if (list) {
 			printListing(package, humanreadable, sorting);

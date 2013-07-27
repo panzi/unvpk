@@ -95,6 +95,51 @@ This project uses following components of the [Boost][2] C++ library:
 
 For vpkfs [FUSE][1] is needed.
 
+File Format
+-----------
+This is a short description of the Valve Packet file format (VPK).
+
+### `*_dir.vpk`
+To my knowlege there are currently (as of Portal 2) two versions of the VPK
+file format. The only difference is that one has a file magic, version
+information and an explicitely given index size, and the other (older) don't.
+
+All values are stored in **little endian**. Offset and Size are given in
+bytes.
+
+#### Types
+
+	Byte ..... a single byte
+	U32 ...... unsigned 32-bit integer
+	ASCIIZ ... zero terminated ASCII string
+
+#### File header (optional)
+If the file doesn't start wit the file magic `0x55AA1234` then the index
+table directly starts at the beginning of the file.
+
+	Offset  Size  Type  Description
+	     0     4  U32   file magic: 0x55AA1234
+	     4     4  U32   version: 1
+	     8     4  U32   index size
+
+#### Index
+Files are grouped by their type (file name extension).
+	
+	Offset  Size  Type    Description
+	[
+	     0     N  ASCIIZ  File type
+		 
+	]*
+	           1  Byte    List-Terminator: 0x00
+
+
+
+### `*_###.vpk`
+These are simple archives where the contained files are simply merged together
+in one big file. You can think of them being created like this:
+
+	cat file1 file2 file3 > pak01_001.vpk
+
 Notes
 -----
 This project is written by Mathias Panzenböck and released under the LGPL v2.1.
