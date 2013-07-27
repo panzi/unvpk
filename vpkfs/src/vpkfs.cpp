@@ -150,6 +150,7 @@ Vpk::Vpkfs::Vpkfs(int argc, char *argv[], bool allocated)
 			m_flags |= VPK_OPTS_ERROR;
 		}
 	}
+	setup();
 }
 
 Vpk::Vpkfs::Vpkfs(
@@ -173,6 +174,7 @@ Vpk::Vpkfs::Vpkfs(
 	}
 	m_args.add_arg("--");
 	m_args.add_arg(m_mountpoint);
+	setup();
 }
 
 static int vpk_getattr(const char *path, struct stat *stbuf) {
@@ -225,59 +227,24 @@ static int vpk_getxattr(const char *path, const char *name, char *buf, size_t si
 		path, name, buf, size);
 }
 
-static struct fuse_operations vpkfuse_operations = {
-	/* getattr            */ vpk_getattr,
-	/* readlink           */ 0,
-	/* getdir             */ 0,
-	/* mknod              */ 0,
-	/* mkdir              */ 0,
-	/* unlink             */ 0,
-	/* rmdir              */ 0,
-	/* symlink            */ 0,
-	/* rename             */ 0,
-	/* link               */ 0,
-	/* chmod              */ 0,
-	/* chown              */ 0,
-	/* truncate           */ 0,
-	/* utime              */ 0,
-	/* open               */ vpk_open,
-	/* read               */ vpk_read,
-	/* write              */ 0,
-	/* statfs             */ vpk_statfs,
-	/* flush              */ 0,
-	/* release            */ 0,
-	/* fsync              */ 0,
-	/* setxattr           */ 0,
-	/* getxattr           */ vpk_getxattr,
-	/* listxattr          */ vpk_listxattr,
-	/* removexattr        */ 0,
-	/* opendir            */ vpk_opendir,
-	/* readdir            */ vpk_readdir,
-	/* releasedir         */ 0,
-	/* fsyncdir           */ 0,
-	/* init               */ 0,
-	/* destroy            */ 0,
-	/* access             */ 0,
-	/* create             */ 0,
-	/* ftruncate          */ 0,
-	/* fgetattr           */ 0,
-	/* lock               */ 0,
-	/* utimens            */ 0,
-	/* bmap               */ 0,
-	/* flag_nullpath_ok   */ 1,
-	/* flag_nopath        */ 1,
-	/* flag_utime_omit_ok */ 1,
-	/* flag_reserved      */ 0,
-	/* ioctl              */ 0,
-	/* poll               */ 0,
+void Vpk::Vpkfs::setup() {
+	memset(&m_operations, 0, sizeof(m_operations));
+
+	m_operations.getattr          = vpk_getattr;
+	m_operations.open             = vpk_open;
+	m_operations.read             = vpk_read;
+	m_operations.statfs           = vpk_statfs;
+	m_operations.getxattr         = vpk_getxattr;
+	m_operations.listxattr        = vpk_listxattr;
+	m_operations.opendir          = vpk_opendir;
+	m_operations.readdir          = vpk_readdir;
+	m_operations.flag_nullpath_ok = 1;
 
 #if FUSE_USE_VERSION >= 29
-	/* write_buf          */ 0,
-	/* read_buf           */ vpk_read_buf,
-	/* flock              */ 0,
-	/* fallocate          */ 0,
+	m_operations.flag_nopath      = 1;
+	m_operations.read_buf         = vpk_read_buf;
 #endif
-};
+}
 
 void Vpk::Vpkfs::statfs(const Node *node) {
 	++ m_files;
@@ -321,7 +288,7 @@ int Vpk::Vpkfs::run() {
 		m_archives[index] = fd;
 	}
 
-	return fuse_main(m_args.argc(), m_args.argv(), &vpkfuse_operations, this);
+	return fuse_main(m_args.argc(), m_args.argv(), &m_operations, this);
 }
 
 // only minimal stat:

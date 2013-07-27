@@ -42,7 +42,7 @@ namespace Vpk {
 			const std::string &mountpoint,
 			bool               singlethreaded = false,
 			const std::string &mountopts = "");
-		Vpkfs() { clear(); }
+		~Vpkfs() { clear(); }
 
 		int run();
 		int getattr(const char *path, struct stat *stbuf);
@@ -66,20 +66,22 @@ namespace Vpk {
 		void clear();
 	
 	private:
+		void setup();
 		void statfs(const Node *node);
 
 		typedef boost::unordered_map<uint16_t,int> Archives;
 		typedef boost::unordered_set<uint16_t> Indices;
 
-		FuseArgs         m_args;
-		int              m_flags;
-		std::string      m_archive;
-		std::string      m_mountpoint;
-		ConsoleHandler   m_handler;
-		Package          m_package;
-		Archives         m_archives;
-		fsfilcnt_t       m_files;
-		Indices          m_indices;
+		FuseArgs               m_args;
+		int                    m_flags;
+		std::string            m_archive;
+		std::string            m_mountpoint;
+		ConsoleHandler         m_handler;
+		Package                m_package;
+		Archives               m_archives;
+		fsfilcnt_t             m_files;
+		Indices                m_indices;
+		struct fuse_operations m_operations;
 	};
 }
 
