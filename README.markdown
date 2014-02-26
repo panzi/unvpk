@@ -86,12 +86,12 @@ Setup
 If you don't want to build and install unvpk replace the cmake line with:
 
 	:::text
-	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_UNVPK=OFF ..
+	cmake -DCMAKE_INSTALL_PREFIX=/usr -DWITH_UNVPK=OFF ..
 
 If you don't want to build and install vpkfs replace the cmake line with:
 
 	:::text
-	cmake -DCMAKE_INSTALL_PREFIX=/usr WITH_VPKFS=OFF ..
+	cmake -DCMAKE_INSTALL_PREFIX=/usr -DWITH_VPKFS=OFF ..
 
 Dependencies
 ------------
