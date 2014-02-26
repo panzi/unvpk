@@ -19,6 +19,8 @@
 #ifndef VPK_COVERAGE_H
 #define VPK_COVERAGE_H
 
+#include <stdio.h>
+
 #include <string>
 #include <map>
 

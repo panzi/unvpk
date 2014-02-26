@@ -7,6 +7,14 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif()
 
+find_path(XATTR_INCLUDE_DIR attr/xattr.h)
+
+if(XATTR_INCLUDE_DIR)
+	message(STATUS "Found attr/xattr.h")
+else()
+	message(FATAL_ERROR "Could not find attr/xattr.h")
+endif()
+
 find_package(PkgConfig)
 pkg_check_modules(FUSE fuse REQUIRED)
 add_definitions(${FUSE_CFLAGS_OTHER})
@@ -17,7 +25,7 @@ else()
 	add_definitions("-DFUSE_USE_VERSION=29")
 endif()
 
-include_directories("../libvpk/include" "include")
+include_directories("../libvpk/include" "include" "${XATTR_INCLUDE_DIR}")
 
 add_executable(vpkfs
 	src/main.cpp
