@@ -154,7 +154,9 @@ static void printStats(
 		bool printall) {
 	Stats stats;
 
-	stats[0x7fff].coverage().add(0, package.dataoff());
+	Coverage &pkgcov = stats[0x7fff].coverage();
+	pkgcov.add(0, package.dataoff());
+	// TODO: footer?
 
 	std::string prefix = tolower(package.name());
 	prefix += '_';

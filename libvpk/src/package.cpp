@@ -64,6 +64,12 @@ void Vpk::Package::read(const fs::path &path, FileIO &io) {
 void Vpk::Package::read(FileIO &io) {
 	size_t headerSize = 0;
 	unsigned int indexSize = 0;
+
+	m_version = 0;
+	m_dataoff = 0;
+	m_pkgHashSize = 0;
+	m_extraSize   = 0;
+
 	if (io.readLU32() != 0x55AA1234) {
 		io.seek(-4, FileIO::CUR);
 	}
@@ -71,9 +77,15 @@ void Vpk::Package::read(FileIO &io) {
 		m_version  = io.readLU32();
 		indexSize  = io.readLU32();
 		headerSize = io.tell();
-		m_dataoff  = indexSize + headerSize;
+		m_dataoff  = indexSize + headerSize; // + footerSize?
 
-		if (m_version != 1) {
+		if (m_version == 2) {
+			io.readLU32(); // UNKNOWN
+			m_pkgHashSize = io.readLU32();
+			m_extraSize   = io.readLU32();
+			io.readLU32(); // UNKNOWN
+		}
+		else if (m_version != 1) {
 			throw FileFormatError((boost::format("unsupported VPK version: %u")
 				% m_version).str());
 		}
