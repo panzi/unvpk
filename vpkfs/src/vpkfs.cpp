@@ -150,6 +150,8 @@ Vpk::Vpkfs::Vpkfs(int argc, char *argv[], bool allocated)
 			m_flags |= VPK_OPTS_ERROR;
 		}
 	}
+
+	m_archive = fs::absolute(m_archive).string();
 	setup();
 }
 
@@ -227,9 +229,27 @@ static int vpk_getxattr(const char *path, const char *name, char *buf, size_t si
 		path, name, buf, size);
 }
 
+static void *vpk_init(struct fuse_conn_info *) {
+	Vpk::Vpkfs *vpk = (Vpk::Vpkfs*) fuse_get_context()->private_data;
+	try {
+		vpk->init();
+	}
+	catch (const std::exception &exc) {
+		std::cerr << "*** error: " << exc.what() << std::endl;
+		exit(1); // can't throw through C code
+	}
+	catch (...) {
+		std::cerr << "*** unknown exception\n";
+		exit(1); // can't throw through C code
+	}
+
+	return vpk;
+}
+
 void Vpk::Vpkfs::setup() {
 	memset(&m_operations, 0, sizeof(m_operations));
 
+	m_operations.init             = vpk_init;
 	m_operations.getattr          = vpk_getattr;
 	m_operations.open             = vpk_open;
 	m_operations.read             = vpk_read;
@@ -266,6 +286,10 @@ int Vpk::Vpkfs::run() {
 	if (m_flags & VPK_OPTS_ERROR) return 1;
 	if (m_flags & (VPK_OPTS_HELP | VPK_OPTS_VERSION)) return 0;
 
+	return fuse_main(m_args.argc(), m_args.argv(), &m_operations, this);
+}
+
+void Vpk::Vpkfs::init() {
 	clear();
 	m_handler.setRaise(true);
 	m_package.read(m_archive);
@@ -281,14 +305,12 @@ int Vpk::Vpkfs::run() {
 		if (fd < 0) {
 			int errnum = errno;
 			std::cerr
-				<< "*** error opening archive: \""
-				<< archivePath << "\"\n";
+				<< "*** error opening archive \"" << archivePath << "\": "
+				<< strerror(errnum) << std::endl;
 			throw IOError(errnum);
 		}
 		m_archives[index] = fd;
 	}
-
-	return fuse_main(m_args.argc(), m_args.argv(), &m_operations, this);
 }
 
 // only minimal stat:
