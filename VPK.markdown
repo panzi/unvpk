@@ -55,10 +55,10 @@ Offensive is known to use this format.
 	 0x0000      1  U32     File magic: 0x55AA1234
 	 0x0004      1  U32     VPK version: 2
 	 0x0008      1  U32     Index size.
-	 0x000C      1  U32     ?
-	 0x0010      1  U32     Footer length? Extra CRC length?
-	 0x0014      1  U32     Extra size?
-	 0x0018      1  U32     ?
+	 0x000C      1  U32     Footer offset.
+	 0x0010      1  U32     Always 0?
+	 0x0014      1  U32     Footer size.
+	 0x0018      1  U32     Always 48?
 
 
 ### Body

@@ -65,24 +65,24 @@ void Vpk::Package::read(FileIO &io) {
 	size_t headerSize = 0;
 	unsigned int indexSize = 0;
 
-	m_version = 0;
-	m_dataoff = 0;
-	m_pkgHashSize = 0;
-	m_extraSize   = 0;
+	m_version      = 0;
+	m_dataOffset   = 0;
+	m_footerOffset = 0;
+	m_footerSize   = 0;
 
 	if (io.readLU32() != 0x55AA1234) {
 		io.seek(-4, FileIO::CUR);
 	}
 	else {
-		m_version  = io.readLU32();
-		indexSize  = io.readLU32();
-		headerSize = io.tell();
-		m_dataoff  = indexSize + headerSize; // + footerSize?
+		m_version    = io.readLU32();
+		indexSize    = io.readLU32();
+		headerSize   = io.tell();
+		m_dataOffset = indexSize + headerSize; // + footerSize?
 
 		if (m_version == 2) {
+			m_footerOffset = io.readLU32();
 			io.readLU32(); // UNKNOWN
-			m_pkgHashSize = io.readLU32();
-			m_extraSize   = io.readLU32();
+			m_footerSize = io.readLU32();
 			io.readLU32(); // UNKNOWN
 		}
 		else if (m_version != 1) {
@@ -110,9 +110,9 @@ void Vpk::Package::read(FileIO &io) {
 	}
 
 	if (m_version == 0) {
-		m_dataoff = io.tell();
+		m_dataOffset = io.tell();
 	}
-	else if (io.tell() != m_dataoff) {
+	else if (m_version == 1 && io.tell() != m_dataOffset) {
 		Exception exc(
 			(boost::format("missmatch between header index size (%u) and real index size (%u)")
 			% indexSize % (io.tell() - headerSize)).str());
@@ -122,7 +122,7 @@ void Vpk::Package::read(FileIO &io) {
 	}
 
 	for (std::vector<File*>::iterator i = dirfiles.begin(); i != dirfiles.end(); ++ i) {
-		(*i)->offset += m_dataoff;
+		(*i)->offset += m_dataOffset;
 	}
 }
 

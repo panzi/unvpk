@@ -39,7 +39,7 @@ namespace Vpk {
 	class Package : public Dir {
 	public:
 		Package(Handler *handler = 0) :
-			Dir(""), m_version(0), m_dataoff(0), m_pkgHashSize(0), m_extraSize(0), m_srcdir("."), m_handler(handler) {}
+			Dir(""), m_version(0), m_dataOffset(0), m_footerOffset(0), m_footerSize(0), m_srcdir("."), m_handler(handler) {}
 
 		void read(const char *path) { read(boost::filesystem::path(path)); }
 		void read(const std::string &path) { read(boost::filesystem::path(path)); }
@@ -54,9 +54,9 @@ namespace Vpk {
 		std::string             archiveName(uint16_t index) const;
 		boost::filesystem::path archivePath(uint16_t index) const;
 		unsigned int version() const { return m_version; }
-		unsigned int dataoff() const { return m_dataoff; }
-		unsigned int packageHashSize() const { return m_pkgHashSize; }
-		unsigned int extraSize() const { return m_extraSize; }
+		unsigned int dataoff() const { return m_dataOffset; }
+		unsigned int footerOffset() const { return m_footerOffset; }
+		unsigned int footerSize() const { return m_footerSize; }
 		const std::string &srcdir() const { return m_srcdir; }
 		const std::string &dirfile() const { return m_dirfile; }
 		Node *get(const std::string &path) { return get(path.c_str()); }
@@ -94,9 +94,9 @@ namespace Vpk {
 		bool error(const std::exception &exc, const std::string &path, ErrorMethod handler) const;
 
 		unsigned int m_version;
-		unsigned int m_dataoff;
-		unsigned int m_pkgHashSize;
-		unsigned int m_extraSize;
+		unsigned int m_dataOffset;
+		unsigned int m_footerOffset;
+		unsigned int m_footerSize;
 		std::string  m_srcdir;
 		std::string  m_dirfile;
 		Handler     *m_handler;

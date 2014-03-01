@@ -217,10 +217,10 @@ table directly starts at the beginning of the file.
 	     0     4  U32   file magic: 0x55AA1234
 	     4     4  U32   version: 2
 	     8     4  U32   index size
-	    12     4  U32   ?
-	    16     4  U32   footer length? extra CRC length?
-	    20     4  U32   extra size?
-	    24     4  U32   ?
+	    12     4  U32   footer offset
+	    16     4  U32   always 0?
+	    20     4  U32   footer size?
+	    24     4  U32   always 48?
 
 #### Index
 Files are grouped by their type (file name extension).
