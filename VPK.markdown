@@ -161,3 +161,4 @@ References
 ----------
 
  * [VPK File Format - Valve Developer Community](http://developer.valvesoftware.com/wiki/VPK_File_Format)
+ * [jvpklib](https://github.com/ata4/jvpklib), in particular [this part](https://github.com/ata4/jvpklib/blob/9b2dc1a7727a23b9303bc237ad58452ecf91e9ee/src/info/ata4/vpk/VPKArchive.java#L79)
