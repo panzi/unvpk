@@ -179,6 +179,8 @@ information and an explicitely given index size, and the other (older) don't.
 	│                                     │
 	└─────────────────────────────────────┘
 
+Version 2 of VPK has more fields in its header (see below) and more after the
+data section (a footer?). Details are not known at the moment.
 
 #### Value Types
 All values are stored in **little endian**. Offsets and sizes are given in
@@ -202,10 +204,23 @@ no file type, directory path or file name may have a zero-length.
 If the file doesn't start wit the file magic `0x55AA1234` then the index
 table directly starts at the beginning of the file.
 
+##### Version 1
+
 	Offset  Size  Type  Description
 	     0     4  U32   file magic: 0x55AA1234
 	     4     4  U32   version: 1
 	     8     4  U32   index size
+
+##### Version 2
+
+	Offset  Size  Type  Description
+	     0     4  U32   file magic: 0x55AA1234
+	     4     4  U32   version: 2
+	     8     4  U32   index size
+	    12     4  U32   ?
+	    16     4  U32   footer length? extra CRC length?
+	    20     4  U32   extra size?
+	    24     4  U32   ?
 
 #### Index
 Files are grouped by their type (file name extension).

@@ -39,10 +39,27 @@ format. Check for the file magic. If the file starts with the binary string
 accidental collision with the older format is improbable, because these values
 would be very odd ASCII characters for a pathname.
 
+#### Version 1
+
 	 Offset  Count  Type    Description
 	 0x0000      1  U32     File magic: 0x55AA1234
-	 0x0004      1  U32     VPK version, only known version is 1
-	 0x0008      1  U32     Index size. I don't know why this is needed.
+	 0x0004      1  U32     VPK version: 1
+	 0x0008      1  U32     Index size.
+
+#### Version 2
+
+Not much is known about version 2. Currently only Counter Strike: Global
+Offensive is known to use this format.
+
+	 Offset  Count  Type    Description
+	 0x0000      1  U32     File magic: 0x55AA1234
+	 0x0004      1  U32     VPK version: 2
+	 0x0008      1  U32     Index size.
+	 0x000C      1  U32     ?
+	 0x0010      1  U32     Footer length? Extra CRC length?
+	 0x0014      1  U32     Extra size?
+	 0x0018      1  U32     ?
+
 
 ### Body
 
