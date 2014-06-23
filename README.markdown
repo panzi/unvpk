@@ -201,7 +201,7 @@ read a zero-length name you know the list is terminated. This means that
 no file type, directory path or file name may have a zero-length.
 
 #### Header
-If the file doesn't start wit the file magic `0x55AA1234` then the index
+If the file doesn't start with the file magic `0x55AA1234` then the index
 table directly starts at the beginning of the file.
 
 ##### Version 1
