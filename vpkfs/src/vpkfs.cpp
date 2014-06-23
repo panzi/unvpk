@@ -23,6 +23,7 @@
 #include <memory.h>
 #include <attr/xattr.h>
 #include <endian.h>
+#include <stdint.h>
 
 #include <iostream>
 #include <limits>
@@ -356,9 +357,11 @@ int Vpk::Vpkfs::getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_atime = archst.st_atime;
 		stbuf->st_ctime = archst.st_ctime;
 		stbuf->st_mtime = archst.st_mtime;
+		return 0;
 	}
-
-	return -code;
+	else {
+		return -errno;
+	}
 }
 
 int Vpk::Vpkfs::opendir(const char *path, struct fuse_file_info *fi) {
@@ -372,10 +375,11 @@ int Vpk::Vpkfs::opendir(const char *path, struct fuse_file_info *fi) {
 		return -ENOTDIR;
 	}
 
-	if((fi->flags & 3) != O_RDONLY)
+	if((fi->flags & 3) != O_RDONLY) {
 		return -EACCES;
+	}
 
-	fi->fh = (uint64_t) (Dir *) node;
+	fi->fh = (intptr_t) (Dir *) node;
 
 	return 0;
 }
@@ -412,7 +416,7 @@ int Vpk::Vpkfs::open(const char *path, struct fuse_file_info *fi) {
 		return -EACCES;
 
 	fi->keep_cache = 1;
-	fi->fh = (uint64_t) (File *) node;
+	fi->fh = (intptr_t) (File *) node;
 
 	return 0;
 }
