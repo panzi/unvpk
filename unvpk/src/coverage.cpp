@@ -19,6 +19,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <cstdint>
 
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
@@ -121,6 +122,7 @@ std::string Vpk::Coverage::humanReadableSize(size_t size) {
 	else if (size < 1024L * 1024 * 1024) {
 		return (boost::format("%.1lfM") % (size / (double)(1024L * 1024))).str();
 	}
+#if SIZE_MAX > 0xffffffff
 	else if (size < 1024LL * 1024 * 1024 * 1024) {
 		return (boost::format("%.1lfG") % (size / (double)(1024L * 1024 * 1024))).str();
 	}
@@ -133,4 +135,9 @@ std::string Vpk::Coverage::humanReadableSize(size_t size) {
 	else {
 		return (boost::format("%.1lfE") % (size / (double)(1024LL * 1024 * 1024 * 1024 * 1024 * 1024))).str();
 	}
+#else
+	else {
+		return (boost::format("%.1lfG") % (size / (double)(1024L * 1024 * 1024))).str();
+	}
+#endif
 }
