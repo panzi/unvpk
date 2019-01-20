@@ -212,6 +212,7 @@ void Vpk::ConsoleTable::align(
 				size += n;
 				while (n) { os.put(fill); -- n; }
 			}
+			[[fallthrough]];
 
 		case LEFT:
 		default:
