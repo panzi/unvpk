@@ -7,12 +7,12 @@ if(COMMAND cmake_policy)
 	cmake_policy(SET CMP0003 NEW)
 endif()
 
-find_path(XATTR_INCLUDE_DIR attr/xattr.h)
+find_path(XATTR_INCLUDE_DIR sys/xattr.h)
 
 if(XATTR_INCLUDE_DIR)
-	message(STATUS "Found attr/xattr.h")
+	message(STATUS "Found sys/xattr.h")
 else()
-	message(FATAL_ERROR "Could not find attr/xattr.h")
+	message(FATAL_ERROR "Could not find sys/xattr.h")
 endif()
 
 find_package(PkgConfig)

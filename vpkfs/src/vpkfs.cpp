@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <memory.h>
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 #include <endian.h>
 #include <stdint.h>
 
@@ -633,7 +633,7 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 		return ::getxattr(m_archive, buf, size);
 	}
 	else if (node->type() != Node::FILE) {
-		return -ENOATTR;
+		return -ENODATA;
 	}
 	else {
 		File *file = (File*) node;
@@ -644,7 +644,7 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 			return ::getxattr((uint16_t) file->preload.size(), buf, size);
 		}
 		else if (!file->size) {
-			return -ENOATTR;
+			return -ENODATA;
 		}
 		else if (strcmp(name, "user.vpkfs.archive_index") == 0) {
 			return ::getxattr(file->index, buf, size);
@@ -656,7 +656,7 @@ int Vpk::Vpkfs::getxattr(const char *path, const char *name, char *buf, size_t s
 			return ::getxattr(file->offset, buf, size);
 		}
 		else {
-			return -ENOATTR;
+			return -ENODATA;
 		}
 	}
 }
