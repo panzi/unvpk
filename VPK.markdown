@@ -115,20 +115,20 @@ encoding or compression.
 ```plain
  Offset  Count  Type    Description
  0x0000      1  AsciiZ  File name (without extension). E.g.: "ding_on"
-      ?      1  U16     CRC32 checksum
-+0x0002      1  U16     Inlined file size (IFS).
-+0x0004      1  U16     Archive index. This is the "###" part of the
+      ?      1  U32     CRC32 checksum
++0x0004      1  U16     Inlined file size (IFS).
++0x0006      1  U16     Archive index. This is the "###" part of the
                         archive file names. If the index is 0x7fff (max signed
                         16bit int) then the file is embedded in the directory
                         file instead of a separate archive.
-+0x0006      1  U32     Offset within the archive where the file starts.
++0x0008      1  U32     Offset within the archive where the file starts.
                         If the file is embedded in the direcory file (index =
                         0x7fff) this is relative to the end of the file index
                         (i.e. (0 or 12) + index_size).
-+0x000A      1  U32     File size. A file size of 0 indicates that the file
++0x000C      1  U32     File size. A file size of 0 indicates that the file
                         data is inlined in the directory file.
-+0x000E      1  U16     Terminator: 0xFFFF
-+0x0010    IFS  Byte    The inlined file data of the size defined above.
++0x0010      1  U16     Terminator: 0xFFFF
++0x0012    IFS  Byte    The inlined file data of the size defined above.
 ```
 
 ### Pseudo C structs

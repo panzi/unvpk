@@ -203,6 +203,7 @@ Version 2 of VPK has more fields in its header (see below) and more after the
 data section (a footer?). Details are not known at the moment.
 
 #### Value Types
+
 All values are stored in **little endian**. Offsets and sizes are given in
 bytes.
 
