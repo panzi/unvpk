@@ -74,10 +74,8 @@ void Vpk::Package::read(FileIO &io) {
 		io.seek(-4, FileIO::CUR);
 	}
 	else {
-		m_version    = io.readLU32();
-		indexSize    = io.readLU32();
-		headerSize   = io.tell();
-		m_dataOffset = indexSize + headerSize; // + footerSize?
+		m_version = io.readLU32();
+		indexSize = io.readLU32();
 
 		if (m_version == 2) {
 			m_footerOffset = io.readLU32();
@@ -89,6 +87,9 @@ void Vpk::Package::read(FileIO &io) {
 			throw FileFormatError((boost::format("unsupported VPK version: %u")
 				% m_version).str());
 		}
+
+		headerSize   = io.tell();
+		m_dataOffset = indexSize + headerSize; // + footerSize?
 	}
 
 	std::vector<File*> dirfiles;
