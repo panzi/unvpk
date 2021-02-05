@@ -7,6 +7,10 @@ unvpk for a simple extraction tool and the subfolder vpkfs for a
 
 VPK archives are used in Valve Source engine based games like Portal 2.
 
+**Note:** I wrote a [new program](https://github.com/panzi/rust-vpk/) (in Rust)
+that can also write VPK v1 and v2 packages. Also look there for an updated
+file format specification.
+
 Unvpk
 -----
 
